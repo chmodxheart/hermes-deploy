@@ -1,0 +1,34 @@
+# Top-level monorepo ignores
+.planning/
+.git-backups/
+
+# Local editor / agent state
+**/.claude/
+**/.serena/
+**/.vscode/
+**/.direnv/
+
+# Terraform runtime + local artifacts
+terraform/.terraform/
+terraform/.terraform.tfstate.lock.info
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfstate.backup
+terraform/*.tfvars
+terraform/*.tfvars.json
+!terraform/*.tfvars.example
+terraform/crash.log
+terraform/crash.*.log
+terraform/.terraformrc
+terraform/terraform.rc
+terraform/*.tfplan
+terraform/*.tfplan.*
+
+# Nix local artifacts
+nixos/result
+nixos/result-*
+nixos/.pre-commit-config.yaml
+nixos/*.qcow2
+nixos/*.raw
+nixos/keys.txt
+nixos/*.age

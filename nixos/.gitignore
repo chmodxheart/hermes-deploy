@@ -1,0 +1,13 @@
+result
+result-*
+.direnv
+.pre-commit-config.yaml
+*.qcow2
+*.raw
+
+# Editor / agent local state
+.vscode/
+
+# Age keys must never land in the repo
+keys.txt
+*.age

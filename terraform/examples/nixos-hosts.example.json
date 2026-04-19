@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "hosts": {
+    "lab-nixos-01": {
+      "vmid": 110,
+      "hostname": "lab-nixos-01",
+      "node": "pve-01",
+      "ipv4": "10.10.0.11/24",
+      "mac_address": "BC:24:11:AA:BB:01",
+      "bridge": "main",
+      "template_file_id": "local:vztmpl/nixos-25.11-proxmox-lxc.tar.xz",
+      "ssh_user": "root",
+      "tags": [
+        "lab",
+        "nixos"
+      ],
+      "nixos_role": "lab-node"
+    }
+  }
+}

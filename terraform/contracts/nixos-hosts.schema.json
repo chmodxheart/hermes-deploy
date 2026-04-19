@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/eve/terraform/contracts/nixos-hosts.schema.json",
+  "title": "nixos_hosts",
+  "description": "Authoritative contract for downstream NixOS host facts produced by terraform/ and consumed by nixos/ inside this monorepo.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "hosts"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Semantic version of this contract. Consumers must pin or range-match on this value.",
+      "const": "1.0.0"
+    },
+    "hosts": {
+      "type": "object",
+      "description": "Map of Terraform container name to its NixOS-facing host facts.",
+      "additionalProperties": {
+        "$ref": "#/$defs/host"
+      }
+    }
+  },
+  "$defs": {
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vmid",
+        "hostname",
+        "node",
+        "ipv4",
+        "mac_address",
+        "bridge",
+        "template_file_id",
+        "ssh_user",
+        "tags",
+        "nixos_role"
+      ],
+      "properties": {
+        "vmid": {
+          "type": "integer",
+          "minimum": 100,
+          "description": "Proxmox VMID for the LXC container."
+        },
+        "hostname": {
+          "type": "string",
+          "minLength": 1,
+          "description": "DNS-style hostname applied inside the container."
+        },
+        "node": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proxmox cluster node hosting the container."
+        },
+        "ipv4": {
+          "type": "string",
+          "description": "Primary IPv4 address in CIDR form, e.g. 10.0.0.10/24."
+        },
+        "mac_address": {
+          "type": "string",
+          "pattern": "^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$",
+          "description": "Stable MAC address for the primary interface."
+        },
+        "bridge": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proxmox bridge the primary interface attaches to."
+        },
+        "template_file_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proxmox storage file id of the NixOS LXC template used to build the container."
+        },
+        "ssh_user": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Bootstrap SSH user the NixOS repo uses for initial configuration."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Proxmox tags applied to the container for grouping and filtering."
+        },
+        "nixos_role": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Logical role name the NixOS repo maps to a flake/module configuration."
+        }
+      }
+    }
+  }
+}

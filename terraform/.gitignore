@@ -1,0 +1,24 @@
+# Terraform runtime + local artifacts
+.terraform/
+.terraform.tfstate.lock.info
+
+# Terraform state (never commit - contains secrets/resource IDs)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Real tfvars (may contain API tokens, endpoints, secrets)
+# Committed: terraform.tfvars.example only
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Crash logs from terraform providers
+crash.log
+crash.*.log
+
+# CLI config / plan artifacts
+.terraformrc
+terraform.rc
+*.tfplan
+*.tfplan.*

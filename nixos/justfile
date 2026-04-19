@@ -1,0 +1,49 @@
+set shell := ["fish", "-c"]
+set dotenv-load := false
+
+host := env_var_or_default("HOST", "hermes")
+
+_default:
+    @just --list --unsorted
+
+# Evaluate the flake without building
+check:
+    nix flake check --no-build
+
+# Build a host's toplevel derivation without activating
+build HOST=host:
+    nix build ".#nixosConfigurations.{{HOST}}.config.system.build.toplevel"
+
+# Rebuild and switch on the current machine (run on the target host)
+switch HOST=host:
+    sudo nixos-rebuild switch --flake ".#{{HOST}}"
+
+# Dry-run: show what would change
+dry-run HOST=host:
+    sudo nixos-rebuild dry-activate --flake ".#{{HOST}}"
+
+# Deploy to a remote host over SSH (needs wheel + passwordless sudo)
+deploy HOST=host TARGET="":
+    #!/usr/bin/env fish
+    set -l target "{{TARGET}}"
+    if test -z "$target"
+        set target "{{HOST}}"
+    end
+    nixos-rebuild switch --flake ".#{{HOST}}" \
+        --target-host "eve@$target" --use-remote-sudo --fast
+
+# Format every .nix file in the tree
+fmt:
+    nix fmt
+
+# Update all flake inputs
+update:
+    nix flake update
+
+# Edit the encrypted hermes secrets file
+edit-secrets:
+    sops secrets/hermes.yaml
+
+# Derive the age public recipient from the current user's sops key
+show-recipient:
+    age-keygen -y ~/.config/sops/age/keys.txt

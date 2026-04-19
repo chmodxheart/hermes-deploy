@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "langfuse-nats-ingest"
+version = "0.1.0"
+description = "Pull NATS JetStream audit.otlp.> and POST to Langfuse OTLP."
+requires-python = ">=3.11"
+dependencies = [
+  "nats-py>=2.7",
+  "httpx>=0.27",
+]
+
+[project.scripts]
+langfuse-nats-ingest = "langfuse_nats_ingest.__main__:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]

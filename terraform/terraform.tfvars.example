@@ -1,0 +1,33 @@
+virtual_environment_endpoint     = "https://proxmox.example.invalid:8006/api2/json"
+virtual_environment_api_token    = "root@pam!terraform=replace-me"
+virtual_environment_ssh_username = "terraform"
+virtual_environment_insecure     = false
+
+template_file_id = "local:vztmpl/nixos-system-x86_64-linux.tar.xz"
+
+# ------------------------------------------------------------------------------
+# Phase 2: NixOS LXC template reference (root-level, passed through to modules).
+# ------------------------------------------------------------------------------
+# This is the Proxmox storage reference to the NixOS LXC template artifact built
+# via `nixos-rebuild build-image --image-variant proxmox-lxc` and registered as
+# vztmpl content in your Proxmox storage.
+#
+# Form: "storage:vztmpl/<filename>"
+#
+# template_file_id = "local:vztmpl/nixos-25.11-proxmox-lxc.tar.xz"
+
+# ------------------------------------------------------------------------------
+# Phase 2: Container SSH keys (per-container override example).
+# ------------------------------------------------------------------------------
+# The module requires at least one SSH key. Two ways to supply them:
+#
+#   1. Literal key strings via `ssh_authorized_keys` on each `local.containers`
+#      entry.
+#   2. Filesystem paths via `ssh_authorized_key_files` on each entry.
+#
+# To test locally, add this to the matching `local.containers` entry in
+# `locals.tf`:
+#
+#   ssh_authorized_key_files = [pathexpand("~/.ssh/id_ed25519.pub")]
+#
+# ssh-agent passthrough for guest keys is deliberately not supported.
