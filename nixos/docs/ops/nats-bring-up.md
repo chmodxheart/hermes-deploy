@@ -17,7 +17,7 @@
 
 ## 1. Create the three Proxmox LXCs
 
-For `hostName ∈ {mcp-nats-1, mcp-nats-2, mcp-nats-3}`:
+For `hostName ∈ {mcp-nats01, mcp-nats02, mcp-nats03}`:
 
 ```bash
 # On any Proxmox node.
@@ -39,7 +39,7 @@ it on the Mikrotik in step 2.
   mac-address=<NEW_MAC> \
   address=10.0.2.11 \
   server=samesies-lan \
-  comment="mcp-nats-1 audit plane"
+  comment="mcp-nats01 audit plane"
 ```
 
 Repeat for `.12` / `.13`. Pin matters because:
@@ -60,20 +60,20 @@ for n in 1 2 3; do
 done
 ```
 
-Verify from an audit-plane host: `getent hosts mcp-nats-1.samesies.gay`.
+Verify from an audit-plane host: `getent hosts mcp-nats01.samesies.gay`.
 
 ## 4. Publish each host's age pubkey into `.sops.yaml`
 
 Each LXC boots with an ed25519 host key. Convert it to an age pubkey:
 
 ```bash
-ssh root@mcp-nats-1.samesies.gay cat /etc/ssh/ssh_host_ed25519_key.pub \
+ssh root@mcp-nats01.samesies.gay cat /etc/ssh/ssh_host_ed25519_key.pub \
   | ssh-to-age
 ```
 
 Paste the resulting `age1...` into `.sops.yaml` under `keys:` and
 add the host to the `creation_rules` for
-`secrets/mcp-nats-1.yaml` (and, for node 1 only, the operator file).
+`secrets/mcp-nats01.yaml` (and, for node 1 only, the operator file).
 
 Commit the `.sops.yaml` change on a branch. Run
 `sops updatekeys secrets/mcp-nats-*.yaml secrets/nats-operator.yaml`
@@ -85,7 +85,7 @@ to re-encrypt existing entries for the new recipient.
 # Create the operator, account, and service-role users. Uses the local
 # nsc store (~/.nsc) — never checked in.
 nsc add operator --generate-signing-key AuditOperator
-nsc edit operator --service-url nats://mcp-nats-1.samesies.gay:4222
+nsc edit operator --service-url nats://mcp-nats01.samesies.gay:4222
 
 nsc add account --name AuditAccount
 nsc add user --account AuditAccount --name vector-publisher
@@ -138,27 +138,27 @@ with the real value you just minted.
 ## 8. Deploy
 
 ```bash
-nixos-rebuild switch --flake .#mcp-nats-1 --target-host root@mcp-nats-1.samesies.gay
-nixos-rebuild switch --flake .#mcp-nats-2 --target-host root@mcp-nats-2.samesies.gay
-nixos-rebuild switch --flake .#mcp-nats-3 --target-host root@mcp-nats-3.samesies.gay
+nixos-rebuild switch --flake .#mcp-nats01 --target-host root@mcp-nats01.samesies.gay
+nixos-rebuild switch --flake .#mcp-nats02 --target-host root@mcp-nats02.samesies.gay
+nixos-rebuild switch --flake .#mcp-nats03 --target-host root@mcp-nats03.samesies.gay
 ```
 
 Verify clustering from any peer:
 
 ```bash
-ssh root@mcp-nats-1 nats --creds /run/secrets/nats-admin.creds server list
+ssh root@mcp-nats01 nats --creds /run/secrets/nats-admin.creds server list
 # Expect three rows, all "current: true".
 ```
 
 ## 9. Create the JetStream streams (once)
 
 ```bash
-ssh root@mcp-nats-1 \
+ssh root@mcp-nats01 \
   nats --creds /run/secrets/nats-admin.creds stream add AUDIT_OTLP \
     --subjects 'audit.otlp.>' --storage file --replicas 3 \
     --retention limits --max-age 91d --discard old
 
-ssh root@mcp-nats-1 \
+ssh root@mcp-nats01 \
   nats --creds /run/secrets/nats-admin.creds stream add AUDIT_JOURNAL \
     --subjects 'audit.journal.>' --storage file --replicas 3 \
     --retention limits --max-age 31d --discard old

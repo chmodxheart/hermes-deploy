@@ -75,7 +75,7 @@ in
 
     serverName = lib.mkOption {
       type = lib.types.str;
-      example = "mcp-nats-1";
+      example = "mcp-nats01";
       description = ''
         Short server name — matches the hostname of this LXC. Used both as
         the NATS `server_name` and to filter self out of the cluster route
@@ -94,9 +94,9 @@ in
     clusterPeers = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       example = [
-        "mcp-nats-1"
-        "mcp-nats-2"
-        "mcp-nats-3"
+        "mcp-nats01"
+        "mcp-nats02"
+        "mcp-nats03"
       ];
       description = ''
         All cluster peers including self — the module filters self out when

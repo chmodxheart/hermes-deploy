@@ -34,7 +34,7 @@ audit plane.
 +
 +### NATS substrate
 +
-+- [ ] **NATS-01** → Phase 1: 3-LXC NATS/JetStream cluster (`mcp-nats-1,2,3`), R3 streams, one LXC pinned per Proxmox node; file-backed storage on Ceph; declarative via `modules/nats-cluster.nix`
++- [ ] **NATS-01** → Phase 1: 3-LXC NATS/JetStream cluster (`mcp-nats01,2,3`), R3 streams, one LXC pinned per Proxmox node; file-backed storage on Ceph; declarative via `modules/nats-cluster.nix`
 +- [ ] **NATS-02** → Phase 1: Operator + accounts + users via `nsc`; JWT + NKey auth; declarative `modules/nats-accounts.nix` materialises the operator JWT and resolver.conf at deploy time; `/run/secrets/nats-*.creds` provisioned per consumer/publisher
 +- [ ] **NATS-03** → Phase 1: step-ca internal CA (co-located on `mcp-audit`) issues 24h ACME certs; no static TLS certs in the repo; cert-bootstrap oneshots renew automatically
 +- [ ] **NATS-04** → Phase 1: `allow_anonymous = false` at the server; pub/sub ACLs per account (vector-publisher can only publish to `audit.>`; langfuse-ingest can only subscribe under the `AuditAccount`); enforced by the resolver block

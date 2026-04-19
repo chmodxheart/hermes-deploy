@@ -144,8 +144,8 @@ in
   services.resolved.domains = [ "samesies.gay" ];
   networking.extraHosts = ''
     10.0.2.10 mcp-audit.samesies.gay ca.samesies.gay
-    10.0.2.11 mcp-nats-1.samesies.gay
-    10.0.2.12 mcp-nats-2.samesies.gay
-    10.0.2.13 mcp-nats-3.samesies.gay
+    10.0.2.11 mcp-nats01.samesies.gay
+    10.0.2.12 mcp-nats02.samesies.gay
+    10.0.2.13 mcp-nats03.samesies.gay
   '';
 }

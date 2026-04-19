@@ -10,8 +10,8 @@
 set -euo pipefail
 
 : "${STAGE:=false}"
-: "${NATS_HOST_1:=mcp-nats-1.samesies.gay}"
-: "${NATS_HOST_2:=mcp-nats-2.samesies.gay}"
+: "${NATS_HOST_1:=mcp-nats01.samesies.gay}"
+: "${NATS_HOST_2:=mcp-nats02.samesies.gay}"
 : "${STREAM:=AUDIT_OTLP}"
 : "${CREDS:=/run/secrets/nats-admin.creds}"
 

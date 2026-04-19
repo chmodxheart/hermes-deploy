@@ -42,9 +42,9 @@ async def _main() -> None:
     ssl_ctx.load_verify_locations("/run/secrets/step-ca-root")
     nc = await nats.connect(
         servers=[
-            "tls://mcp-nats-1.samesies.gay:4222",
-            "tls://mcp-nats-2.samesies.gay:4222",
-            "tls://mcp-nats-3.samesies.gay:4222",
+            "tls://mcp-nats01.samesies.gay:4222",
+            "tls://mcp-nats02.samesies.gay:4222",
+            "tls://mcp-nats03.samesies.gay:4222",
         ],
         user_credentials="/run/secrets/nats-ingest.creds",
         tls=ssl_ctx,

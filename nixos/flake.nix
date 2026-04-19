@@ -64,25 +64,25 @@
             hermes-agent.nixosModules.default
           ];
         };
-        mcp-nats-1 = mkHost {
-          hostName = "mcp-nats-1";
+        mcp-nats01 = mkHost {
+          hostName = "mcp-nats01";
           modules = [
             ./profiles/lxc.nix
-            ./hosts/mcp-nats-1
+            ./hosts/mcp-nats01
           ];
         };
-        mcp-nats-2 = mkHost {
-          hostName = "mcp-nats-2";
+        mcp-nats02 = mkHost {
+          hostName = "mcp-nats02";
           modules = [
             ./profiles/lxc.nix
-            ./hosts/mcp-nats-2
+            ./hosts/mcp-nats02
           ];
         };
-        mcp-nats-3 = mkHost {
-          hostName = "mcp-nats-3";
+        mcp-nats03 = mkHost {
+          hostName = "mcp-nats03";
           modules = [
             ./profiles/lxc.nix
-            ./hosts/mcp-nats-3
+            ./hosts/mcp-nats03
           ];
         };
         mcp-audit = mkHost {

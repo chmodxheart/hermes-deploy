@@ -1,10 +1,13 @@
 # Phase 1 live-host verification manual
 
 > Companion to `VERIFICATION.md`. Sequences the 5 `human_verification`
-> items on top of the existing runbooks (`nats-bring-up.md`,
-> `new-lxc-checklist.md`, `langfuse-minio-bucket.md`).
+> items on top of the existing runbooks
+> ([`nats-bring-up.md`](nats-bring-up.md),
+> [`new-lxc-checklist.md`](new-lxc-checklist.md),
+> [`langfuse-minio-bucket.md`](langfuse-minio-bucket.md)).
 >
-> **Ownership boundary** (see `docs/ownership-boundary.md`):
+> **Ownership boundary** (see
+> [`../../../docs/ownership-boundary.md`](../../../docs/ownership-boundary.md)):
 > Terraform in `terraform/` owns Proxmox-side LXC provisioning
 > (node, VMID, MAC, IP, rootfs, CPU/memory, SSH bootstrap keys). The
 > `nixos/` tree owns guest configuration (users, services, secrets, sops).
@@ -14,6 +17,8 @@
 > Run order is top-to-bottom: each section assumes the previous one
 > passed. All tests are in `tests/`; env vars for each are listed at the
 > top of the script.
+>
+> Start from [`README.md`](README.md) if you need the wider NixOS ops doc map.
 
 ## 0. One-time prerequisites
 
@@ -56,7 +61,7 @@ audit-plane host. Replace the placeholder `lab-nixos-01` entry with
   ssh_authorized_key_files = [pathexpand("~/.ssh/id_ed25519.pub")]
 }
 
-"mcp-nats-1" = {
+"mcp-nats01" = {
   node             = "pve-1"
   vmid             = 211
   ipv4             = "10.0.2.11/24"
@@ -70,7 +75,7 @@ audit-plane host. Replace the placeholder `lab-nixos-01` entry with
   tags             = ["audit-plane", "nats"]
   ssh_authorized_key_files = [pathexpand("~/.ssh/id_ed25519.pub")]
 }
-# Repeat for mcp-nats-2 (pve-2, VMID 212, .12, MAC …:12) and mcp-nats-3
+# Repeat for mcp-nats02 (pve-2, VMID 212, .12, MAC …:12) and mcp-nats03
 # (pve-3, VMID 213, .13, MAC …:13). Node pinning matters — one NATS LXC
 # per Proxmox node so R3 survives a single-node loss.
 ```
@@ -112,9 +117,9 @@ Sanity check: `getent hosts mcp-audit.samesies.gay` returns `10.0.2.10`.
 ```fish
 cd ~/repo/hermes-deploy
 ./scripts/add-host.sh mcp-audit
-./scripts/add-host.sh mcp-nats-1
-./scripts/add-host.sh mcp-nats-2
-./scripts/add-host.sh mcp-nats-3
+./scripts/add-host.sh mcp-nats01
+./scripts/add-host.sh mcp-nats02
+./scripts/add-host.sh mcp-nats03
 ```
 
 Each invocation generates a dedicated age keypair, publishes the pubkey
@@ -175,7 +180,7 @@ side of D-02.
 
 ```fish
 nats --creds ~/.nats/admin.creds \
-  --server tls://mcp-nats-1.samesies.gay:4222 \
+  --server tls://mcp-nats01.samesies.gay:4222 \
   server list
 ```
 
@@ -189,7 +194,7 @@ false` → peer is behind on jetstream replication (wait 30s, retry).
 
 ```fish
 nats --creds ~/.nats/admin.creds \
-  --server tls://mcp-nats-1.samesies.gay:4222 \
+  --server tls://mcp-nats01.samesies.gay:4222 \
   stream add AUDIT_OTLP \
     --subjects 'audit.otlp.>' \
     --storage file --replicas 3 \
@@ -197,7 +202,7 @@ nats --creds ~/.nats/admin.creds \
     --defaults
 
 nats --creds ~/.nats/admin.creds \
-  --server tls://mcp-nats-1.samesies.gay:4222 \
+  --server tls://mcp-nats01.samesies.gay:4222 \
   stream add AUDIT_JOURNAL \
     --subjects 'audit.journal.>' \
     --storage file --replicas 3 \
@@ -209,7 +214,7 @@ nats --creds ~/.nats/admin.creds \
 
 ```fish
 nats --creds ~/.nats/admin.creds \
-  --server tls://mcp-nats-1.samesies.gay:4222 \
+  --server tls://mcp-nats01.samesies.gay:4222 \
   stream info AUDIT_OTLP --json | jq '.config.num_replicas, .cluster.leader'
 ```
 
@@ -225,11 +230,11 @@ nats --creds ~/.nats/admin.creds \
 
 ```fish
 nix shell nixpkgs#natscli -c env \
-  NATS_HOST=mcp-nats-1.samesies.gay \
+  NATS_HOST=mcp-nats01.samesies.gay \
   bash tests/audit04-nats-anon.sh
 ```
 
-**Expect:** `OK: mcp-nats-1.samesies.gay:4222 rejected anonymous publish`.
+**Expect:** `OK: mcp-nats01.samesies.gay:4222 rejected anonymous publish`.
 **Fail signal:** anything containing `Published` or a successful ack →
 the server accepted an anonymous connection; re-check
 `/run/secrets/nats-operator-jwt` on each nats host and
@@ -238,10 +243,10 @@ the server accepted an anonymous connection; re-check
 **2.2 Run the mTLS-required test.**
 
 ```fish
-env NATS_HOST=mcp-nats-1.samesies.gay bash tests/audit04-nats-mtls.sh
+env NATS_HOST=mcp-nats01.samesies.gay bash tests/audit04-nats-mtls.sh
 ```
 
-**Expect:** `OK: mcp-nats-1.samesies.gay:4222 rejected unauthenticated
+**Expect:** `OK: mcp-nats01.samesies.gay:4222 rejected unauthenticated
 TLS (mTLS enforced)`.
 **Fail signal:** `Verify return code: 0 (ok)` → server did not demand a
 client certificate; check `services.nats.settings.tls.verify == true`
@@ -251,7 +256,7 @@ and that `nats-server-cert.service` completed on the host.
 
 ```fish
 nats --creds ~/.nats/admin.creds \
-  --server tls://mcp-nats-1.samesies.gay:4222 \
+  --server tls://mcp-nats01.samesies.gay:4222 \
   pub audit.otlp.test.verification 'hi from verification'
 ```
 
@@ -262,7 +267,7 @@ declarative side is already proven by `assert-no-hermes-reach`):
 
 ```fish
 env HERMES_HOST=hermes.samesies.gay \
-    TARGET_HOST=mcp-nats-1.samesies.gay \
+    TARGET_HOST=mcp-nats01.samesies.gay \
     TARGET_PORT=4222 \
   bash tests/audit03-hermes-probe.sh
 

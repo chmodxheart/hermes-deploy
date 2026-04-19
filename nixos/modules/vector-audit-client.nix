@@ -95,9 +95,9 @@ in
     natsPeers = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
-        "mcp-nats-1"
-        "mcp-nats-2"
-        "mcp-nats-3"
+        "mcp-nats01"
+        "mcp-nats02"
+        "mcp-nats03"
       ];
       description = ''
         NATS cluster peers — Vector's NATS sinks round-robin across all

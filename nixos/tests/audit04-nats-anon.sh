@@ -8,7 +8,7 @@
 # (nixpkgs#natscli) on $PATH.
 set -euo pipefail
 
-: "${NATS_HOST:=mcp-nats-1.samesies.gay}"
+: "${NATS_HOST:=mcp-nats01.samesies.gay}"
 : "${NATS_PORT:=4222}"
 
 if ! command -v nats >/dev/null 2>&1; then

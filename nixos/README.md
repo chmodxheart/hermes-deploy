@@ -23,6 +23,13 @@ secrets/
   hermes.yaml.example  # template — copy, fill, sops-encrypt
 ```
 
+## Docs
+
+- [`../docs/README.md`](../docs/README.md): shared Terraform/NixOS contract docs.
+- [`docs/ops/README.md`](docs/ops/README.md): NixOS operator runbook index.
+- [`docs/ops/deploy-pipeline.md`](docs/ops/deploy-pipeline.md): end-to-end deploy flow.
+- [`docs/ops/new-lxc-checklist.md`](docs/ops/new-lxc-checklist.md): add another NixOS LXC host.
+
 ## Prerequisites on your workstation
 
 - Nix with flakes enabled.

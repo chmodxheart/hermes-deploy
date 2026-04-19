@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-hostname="${1:?Usage: $0 <hostname> (e.g. mcp-audit, mcp-nats-1)}"
+hostname="${1:?Usage: $0 <hostname> (e.g. mcp-audit, mcp-nats01)}"
 
 # --- sanity -----------------------------------------------------------
 

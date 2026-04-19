@@ -9,7 +9,7 @@
 #
 # Invoked by terraform/main.tf, or directly by the operator.
 #
-# Prereqs on PATH: sops, python3, nix (for nixos-rebuild), ssh.
+# Prereqs on PATH: sops, python3, nix, ssh.
 # Prereqs in env: SOPS_AGE_KEY_FILE (workstation key).
 
 set -euo pipefail
@@ -31,12 +31,19 @@ nixos_root="$repo_root/nixos"
   exit 1
 }
 
-for bin in sops python3 ssh nixos-rebuild; do
+for bin in sops python3 ssh nix; do
   command -v "$bin" >/dev/null 2>&1 || {
     echo "error: '$bin' not on PATH" >&2
     exit 1
   }
 done
+
+if command -v nixos-rebuild >/dev/null 2>&1; then
+  rebuild_cmd=(nixos-rebuild)
+else
+  # Non-NixOS workstations often have `nix` but not `nixos-rebuild` on PATH.
+  rebuild_cmd=(nix run nixpkgs#nixos-rebuild --)
+fi
 
 : "${SOPS_AGE_KEY_FILE:=$HOME/.config/sops/age/keys.txt}"
 export SOPS_AGE_KEY_FILE
@@ -64,7 +71,7 @@ if ssh "$target" 'test -s /var/lib/sops-nix/key.txt' 2>/dev/null; then
 else
   echo "[$hostname] pushing age key..."
   privkey=$(sops --decrypt "$nixos_root/secrets/host-sops-keys.yaml" \
-            | python3 -c 'import sys,yaml; print(yaml.safe_load(sys.stdin)["'"$hostname"'"], end="")')
+            | python3 -c 'import sys,yaml; value = yaml.safe_load(sys.stdin)["'"$hostname"'"]; print(next((line.strip() for line in value.splitlines() if line.strip().startswith("AGE-SECRET-KEY-")), ""), end="")')
   if [[ -z "$privkey" || "$privkey" != AGE-SECRET-KEY-* ]]; then
     echo "error: no age key for $hostname in nixos/secrets/host-sops-keys.yaml" >&2
     echo "       (run: $repo_root/scripts/add-host.sh $hostname)" >&2
@@ -81,7 +88,7 @@ fi
 # --- run nixos-rebuild switch -----------------------------------------
 
 echo "[$hostname] running nixos-rebuild switch..."
-nixos-rebuild switch \
+"${rebuild_cmd[@]}" switch \
   --flake "$nixos_root#${hostname}" \
   --target-host "$target" \
   --fast

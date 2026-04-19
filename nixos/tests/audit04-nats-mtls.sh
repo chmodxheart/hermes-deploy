@@ -8,7 +8,7 @@
 # Validates services.nats.settings.tls.verify = true (D-04 mTLS).
 set -euo pipefail
 
-: "${NATS_HOST:=mcp-nats-1.samesies.gay}"
+: "${NATS_HOST:=mcp-nats01.samesies.gay}"
 : "${NATS_PORT:=4222}"
 
 # openssl s_client returns non-zero on handshake failure. Feed </dev/null

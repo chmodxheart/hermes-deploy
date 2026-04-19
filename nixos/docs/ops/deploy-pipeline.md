@@ -4,6 +4,10 @@ This repo's NixOS hosts are bootstrapped and redeployed end-to-end by
 `terraform apply` in `terraform/`. One command,
 every time — no interleaved manual steps.
 
+For the monorepo split and adjacent runbooks, see
+[`../../../docs/ownership-boundary.md`](../../../docs/ownership-boundary.md)
+and [`README.md`](README.md).
+
 The flow:
 
 ```

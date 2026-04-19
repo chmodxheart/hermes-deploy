@@ -12,7 +12,7 @@
 set -euo pipefail
 
 : "${HERMES_HOST:=hermes.samesies.gay}"
-: "${TARGET_HOST:=mcp-nats-1.samesies.gay}"
+: "${TARGET_HOST:=mcp-nats01.samesies.gay}"
 : "${TARGET_PORT:=4222}"
 
 if ! ssh -o BatchMode=yes -o ConnectTimeout=3 "$HERMES_HOST" true 2>/dev/null; then

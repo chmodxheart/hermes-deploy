@@ -33,4 +33,5 @@ scripts/docs define the operator workflow across both.
 - `docs/ownership-boundary.md`: Terraform vs NixOS responsibilities.
 - `docs/template-workflow.md`: supported template artifact flow.
 - `docs/nixos-handoff.md`: Terraform-to-NixOS host contract.
+- `nixos/docs/ops/README.md`: NixOS operator runbook index.
 - `nixos/docs/ops/deploy-pipeline.md`: operator runbook for one-command deploys.

@@ -1,11 +1,11 @@
-# hosts/mcp-nats-1/default.nix
+# hosts/mcp-nats01/default.nix
 # Source: .planning/phases/01-audit-substrate/01-06-PLAN.md Task 1 (canonical shape)
 # Source: .planning/phases/01-audit-substrate/01-CONTEXT.md D-02 D-03 D-04 D-11 D-13 D-14 D-16 D-17
 # Source: .planning/phases/01-audit-substrate/01-PATTERNS.md §hosts/mcp-nats-{1,2,3}/default.nix
 # Source: .planning/phases/01-audit-substrate/01-RESEARCH.md §Pitfalls P5 (declarative nftables only)
 # Source: .planning/phases/01-audit-substrate/01-RESEARCH.md §Pitfalls P9 (cert-bootstrap ordering)
 #
-# First NATS cluster member. Near-identical to mcp-nats-2/3 (PATTERNS.md
+# First NATS cluster member. Near-identical to mcp-nats02/3 (PATTERNS.md
 # "copy+rename; do not over-DRY"). The three hosts differ only in
 # `serverName`, `lxcIp`, and `sops.defaultSopsFile`.
 {
@@ -68,7 +68,7 @@ in
   # it); nats-accounts.nix separately binds the shared operator file.
   #
   # The nats_server_cert / vector_client_cert / *_key slots in
-  # secrets/mcp-nats-1.yaml are REPLACE_ME_POPULATED_AT_BOOTSTRAP — the
+  # secrets/mcp-nats01.yaml are REPLACE_ME_POPULATED_AT_BOOTSTRAP — the
   # cert-bootstrap oneshots in modules/nats-cluster.nix +
   # modules/vector-audit-client.nix WRITE the real certs into
   # /run/{nats,vector}-certs/ at activation time, so they are deliberately
@@ -84,7 +84,7 @@ in
     # Plan 01-09 flips this back to the default (`true`) once the real
     # files are committed.
     validateSopsFiles = false;
-    defaultSopsFile = ../../secrets/mcp-nats-1.yaml;
+    defaultSopsFile = ../../secrets/mcp-nats01.yaml;
     secrets = {
       "step-ca-root" = {
         key = "step_ca_root_cert";
@@ -105,11 +105,11 @@ in
 
   # --- NATS cluster member (D-02, D-03, D-04) ---
   services.mcpNatsCluster.enable = true;
-  services.mcpNatsCluster.serverName = "mcp-nats-1";
+  services.mcpNatsCluster.serverName = "mcp-nats01";
   services.mcpNatsCluster.clusterPeers = [
-    "mcp-nats-1"
-    "mcp-nats-2"
-    "mcp-nats-3"
+    "mcp-nats01"
+    "mcp-nats02"
+    "mcp-nats03"
   ];
   # I-2 nullable pattern — module default is null so Wave 3 `nix flake check`
   # evaluates cleanly. Plan 09-02 runbook step replaces the commented line
@@ -196,8 +196,8 @@ in
   services.resolved.domains = [ "samesies.gay" ];
   networking.extraHosts = ''
     10.0.2.10 mcp-audit.samesies.gay ca.samesies.gay
-    10.0.2.11 mcp-nats-1.samesies.gay
-    10.0.2.12 mcp-nats-2.samesies.gay
-    10.0.2.13 mcp-nats-3.samesies.gay
+    10.0.2.11 mcp-nats01.samesies.gay
+    10.0.2.12 mcp-nats02.samesies.gay
+    10.0.2.13 mcp-nats03.samesies.gay
   '';
 }

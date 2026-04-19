@@ -411,7 +411,7 @@ in
     # settings attrset. One Vector instance, both roles.
     services.vector.settings.sources.nats_journal_consumer = {
       type = "nats";
-      url = "tls://mcp-nats-1.samesies.gay:4222,tls://mcp-nats-2.samesies.gay:4222,tls://mcp-nats-3.samesies.gay:4222";
+      url = "tls://mcp-nats01.samesies.gay:4222,tls://mcp-nats02.samesies.gay:4222,tls://mcp-nats03.samesies.gay:4222";
       subject = "audit.journal.>";
       queue = "audit-journal-consumer";
       jetstream.enabled = true;
