@@ -51,6 +51,7 @@ in
     ../../modules/mcp-otel.nix
     ../../modules/nats-cluster.nix
     ../../modules/nats-accounts.nix
+    ../../modules/otlp-nats-publisher.nix
     ../../modules/vector-audit-client.nix
     ../../modules/mcp-prom-exporters.nix
     ../../modules/pbs-excludes.nix
@@ -124,6 +125,9 @@ in
   # --- Vector audit client (D-07) ---
   services.mcpVectorAuditClient.enable = true;
   services.mcpVectorAuditClient.lxcIp = lxcIp;
+
+  # --- OTLP traces -> NATS publisher ---
+  services.mcpOtlpNatsPublisher.enable = true;
 
   # --- Baseline Prom exporters + D-17 narrow carve-out ---
   services.mcpPromExporters.enable = true;

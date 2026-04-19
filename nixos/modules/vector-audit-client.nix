@@ -6,15 +6,14 @@
 # Source: .planning/phases/01-audit-substrate/01-PATTERNS.md §modules/vector-audit-client.nix
 #
 # Per-LXC Vector client. Imported by every audit-plane LXC that publishes
-# OTel spans or journald events: the 3× mcp-nats-* hosts (for their own
-# self-telemetry + operator/cluster journald) and mcp-audit (for its own
-# service spans). The Vector *consumer* side (nats source → file sink for
-# journald archival, nats source → langfuse-nats-ingest) lives in
+# journald events: the 3× mcp-nats-* hosts (for their own operator/cluster
+# journald) and mcp-audit (for its own journald). OTLP traces no longer flow
+# through Vector because Vector's NATS sink only accepts log events; the trace
+# path now uses a dedicated OTLP-to-NATS publisher module. The Vector
+# *consumer* side (nats source → file sink for journald archival) lives in
 # modules/mcp-audit.nix and is a separate module (Plan 01-08).
 #
-# Pipeline (D-07 locked subject hierarchy):
-#   opentelemetry source ── otel_local.traces ──▶ nats_otlp sink
-#                                                 subject = audit.otlp.<host>
+# Pipeline:
 #   journald source ─────── journal_local ──────▶ nats_journal sink
 #                                                 subject = audit.journal.<host>
 #   internal_metrics ────── internal_metrics ───▶ prom_self sink
@@ -23,8 +22,9 @@
 # Invariants (enforced by option surface + grep-based plan-check):
 #   * Pitfall 6: prometheus_exporter binds on cfg.lxcIp, never 0.0.0.0 —
 #     no default for `lxcIp` so hosts MUST pass their own IP.
-#   * Pitfall 6: `acknowledgements.enabled = true` on both sources AND
-#     sinks so Vector applies upstream backpressure when NATS is stuck.
+#   * Pitfall 6: `acknowledgements.enabled = true` on the journald source
+#     and both sinks so Vector applies upstream backpressure when NATS is
+#     stuck.
 #   * Pitfall 9 / step-ca: vector-client-cert.service oneshot
 #     ExecStartPre probes step-ca /health before requesting a cert;
 #     renewal timer fires every 12h on 24h ACME certs (D-04).
@@ -141,17 +141,6 @@ in
         data_dir = "/var/lib/vector";
 
         sources = {
-          # Local OTLP receiver. App code (Phase 2+ MCP wrappers,
-          # mcp-audit's own services, hermes-agent) points its stock OTel
-          # SDK at 127.0.0.1:4318 — no custom exporter. Vector's multi-
-          # output opentelemetry source splits into .traces / .logs /
-          # .metrics; we wire only .traces into nats_otlp for Phase 1.
-          otel_local = {
-            type = "opentelemetry";
-            grpc.address = "127.0.0.1:4317";
-            http.address = "127.0.0.1:4318";
-            acknowledgements.enabled = true;
-          };
           # Journald tail. `current_boot_only = true` skips old boots on
           # first run — avoids a storm of replay messages hitting NATS
           # when a fresh LXC first connects.
@@ -166,43 +155,6 @@ in
         };
 
         sinks = {
-          # OTLP spans → NATS JetStream. Subject is scoped to this host
-          # so per-account ACLs (Plan 01-09 nsc bootstrap) can lock each
-          # client down to its own subject. Per Pitfall 6 the sink gets
-          # `acknowledgements.enabled = true` so Vector applies upstream
-          # backpressure instead of silently dropping on network blip.
-          #
-          # Note on OTel output routing: Vector's opentelemetry source
-          # emits separate outputs `.logs`, `.metrics`, `.traces`. Phase
-          # 1 wires only `.traces`. If per-output routing fails
-          # vector-validate at build time, uncomment the transform block
-          # below and point `inputs` at `"otel_traces_only.traces"`.
-          #   transforms.otel_traces_only = {
-          #     type = "route";
-          #     inputs = [ "otel_local" ];
-          #     route.traces = ''.type == "traces"'';
-          #   };
-          nats_otlp = {
-            type = "nats";
-            inputs = [ "otel_local.traces" ];
-            url = natsUrl;
-            subject = "audit.otlp.${config.networking.hostName}";
-            connection_name = "vector-${config.networking.hostName}";
-            jetstream.enabled = true;
-            acknowledgements.enabled = true;
-            auth = {
-              strategy = "credentials_file";
-              credentials_file.path = "/run/secrets/nats-client.creds";
-            };
-            tls = {
-              enabled = true;
-              ca_file = "/run/secrets/step-ca-root";
-              crt_file = "/run/vector-certs/client.crt";
-              key_file = "/run/vector-certs/client.key";
-            };
-            encoding.codec = "json";
-          };
-
           # Journald events → NATS JetStream. Separate subject from OTLP
           # so the Vector consumer on mcp-audit (Plan 01-08) can use
           # distinct stream filters for the journal-archival pipeline vs.

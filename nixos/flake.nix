@@ -94,7 +94,10 @@
         };
       };
 
-      packages.${system}.langfuse-nats-ingest = pkgs.callPackage ./pkgs/langfuse-nats-ingest { };
+      packages.${system} = {
+        langfuse-nats-ingest = pkgs.callPackage ./pkgs/langfuse-nats-ingest { };
+        otlp-nats-publisher = pkgs.callPackage ./pkgs/otlp-nats-publisher { };
+      };
 
       devShells.${system}.default = pkgs.mkShell {
         packages = with pkgs; [
@@ -306,14 +309,11 @@
               perHost = map (
                 h:
                 let
-                  containers =
-                    self.nixosConfigurations.${h}.config.virtualisation.oci-containers.containers or { };
+                  containers = self.nixosConfigurations.${h}.config.virtualisation.oci-containers.containers or { };
                   langfuseNames = builtins.filter (n: nixpkgs.lib.hasPrefix "langfuse-" n) (
                     builtins.attrNames containers
                   );
-                  images = builtins.concatStringsSep "\n" (
-                    map (n: "${n} ${containers.${n}.image}") langfuseNames
-                  );
+                  images = builtins.concatStringsSep "\n" (map (n: "${n} ${containers.${n}.image}") langfuseNames);
                 in
                 pkgs.runCommand "langfuse-image-pinned-${h}"
                   {

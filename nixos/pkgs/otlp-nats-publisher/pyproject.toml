@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "otlp-nats-publisher"
+version = "0.1.0"
+description = "Receive OTLP traces over HTTP and publish raw protobuf bodies to NATS."
+requires-python = ">=3.11"
+dependencies = [
+  "aiohttp>=3.10",
+  "nats-py>=2.7",
+]
+
+[project.scripts]
+otlp-nats-publisher = "otlp_nats_publisher.__main__:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]

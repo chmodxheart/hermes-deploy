@@ -82,48 +82,59 @@ to re-encrypt existing entries for the new recipient.
 ## 5. One-time `nsc` operator bootstrap (node 1 only)
 
 ```bash
-# Create the operator, account, and service-role users. Uses the local
-# nsc store (~/.nsc) — never checked in.
+# Create the operator, the shared AUDIT account, and the least-privilege users.
+# Uses the local nsc store (~/.nsc) — never checked in.
 nsc add operator --generate-signing-key AuditOperator
 nsc edit operator --service-url nats://mcp-nats01.samesies.gay:4222
 
-nsc add account --name AuditAccount
-nsc add user --account AuditAccount --name vector-publisher
-nsc add user --account AuditAccount --name langfuse-ingest
-nsc add user --account AuditAccount --name admin
+nsc add account --name AUDIT
+nsc add user --account AUDIT --name vector-mcp-nats01 \
+  --allow-pub 'audit.otlp.traces.mcp-nats01,audit.journal.mcp-nats01'
+nsc add user --account AUDIT --name vector-mcp-nats02 \
+  --allow-pub 'audit.otlp.traces.mcp-nats02,audit.journal.mcp-nats02'
+nsc add user --account AUDIT --name vector-mcp-nats03 \
+  --allow-pub 'audit.otlp.traces.mcp-nats03,audit.journal.mcp-nats03'
+nsc add user --account AUDIT --name langfuse-ingest --allow-sub 'audit.otlp.>'
+nsc add user --account AUDIT --name admin
 
-# Export keys + creds + resolver config.
-nsc generate creds --account AuditAccount --name vector-publisher \
-  > vector-publisher.creds
-nsc generate creds --account AuditAccount --name langfuse-ingest \
+# Export the creds you'll paste into the repo secrets.
+nsc generate creds --account AUDIT --name vector-mcp-nats01 \
+  > vector-mcp-nats01.creds
+nsc generate creds --account AUDIT --name vector-mcp-nats02 \
+  > vector-mcp-nats02.creds
+nsc generate creds --account AUDIT --name vector-mcp-nats03 \
+  > vector-mcp-nats03.creds
+nsc generate creds --account AUDIT --name langfuse-ingest \
   > langfuse-ingest.creds
-nsc generate creds --account AuditAccount --name admin \
+nsc generate creds --account AUDIT --name admin \
   > nats-admin.creds
-nsc generate config --mem-resolver --sys-account SYS \
-  > resolver.conf
 ```
 
-## 6. Populate `secrets/nats-operator.yaml`
+## 6. Generate and encrypt the bootstrap secret files
 
-Copy `secrets/nats-operator.yaml.example` to `secrets/nats-operator.yaml`
-(if not already present) and fill the fields from step 5's outputs:
-
-- `nats_operator_jwt` ← `~/.nsc/stores/AuditOperator/AuditOperator.jwt`
-- `nats_system_account_public_key` ← `nsc describe account SYS`
-  (`Account ID` line)
-- `nats_resolver_preload` ← contents of `resolver.conf`
-- `nats_vector_creds` ← `vector-publisher.creds`
-- `nats_ingest_creds` ← `langfuse-ingest.creds`
-- `nats_admin_creds` ← `nats-admin.creds`
-
-Then:
+From the repo root, run:
 
 ```bash
-sops -e -i secrets/nats-operator.yaml
-sops -e -i secrets/mcp-nats-{1,2,3}.yaml
+./scripts/init-secrets.sh --dry-run --force
+./scripts/init-secrets.sh --force
 ```
 
-Commit the encrypted files.
+This helper now does the bootstrap generation directly instead of copying the
+examples by hand. It will:
+
+- create or reuse the shared `AUDIT` account and the users from step 5
+- generate/write encrypted `secrets/nats-operator.yaml`
+- generate/write encrypted `secrets/mcp-audit.yaml`
+- generate/write encrypted `secrets/mcp-nats01.yaml`
+- generate/write encrypted `secrets/mcp-nats02.yaml`
+- generate/write encrypted `secrets/mcp-nats03.yaml`
+- leave only the explicitly deferred/manual values as placeholders
+
+Use the dry run first to confirm which `nsc` users will be created or reused
+and which encrypted files would be replaced, without modifying the local
+`~/.nsc` store or the repo secrets.
+
+Commit the encrypted files once they look correct.
 
 ## 7. Uncomment the system-account public-key line
 
@@ -142,6 +153,27 @@ nixos-rebuild switch --flake .#mcp-nats01 --target-host root@mcp-nats01.samesies
 nixos-rebuild switch --flake .#mcp-nats02 --target-host root@mcp-nats02.samesies.gay
 nixos-rebuild switch --flake .#mcp-nats03 --target-host root@mcp-nats03.samesies.gay
 ```
+
+## 8.5. Fill the real `step_ca_root_cert` after first bootstrap
+
+`scripts/init-secrets.sh` intentionally leaves `step_ca_root_cert` as a
+placeholder on the first pass because the real PEM does not exist until
+`mcp-audit` has bootstrapped `step-ca`.
+
+After the first successful `mcp-audit` bootstrap:
+
+```bash
+ssh root@mcp-audit.samesies.gay cat /etc/step-ca/certs/root_ca.crt
+```
+
+Paste that PEM into:
+
+- `secrets/mcp-audit.yaml`
+- `secrets/mcp-nats01.yaml`
+- `secrets/mcp-nats02.yaml`
+- `secrets/mcp-nats03.yaml`
+
+Then re-encrypt/redeploy.
 
 Verify clustering from any peer:
 

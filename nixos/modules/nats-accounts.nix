@@ -1,5 +1,5 @@
 # modules/nats-accounts.nix
-# Source: .planning/phases/01-audit-substrate/01-CONTEXT.md D-03 (per-account JWTs + server-side ACLs)
+# Source: .planning/phases/01-audit-substrate/01-CONTEXT.md D-03 (account JWTs + server-side ACLs)
 # Source: .planning/phases/01-audit-substrate/01-RESEARCH.md §Pitfalls P8 (nsc runs ONCE, artifacts committed to sops)
 # Source: .planning/phases/01-audit-substrate/01-PATTERNS.md §modules/nats-accounts.nix (artifact-as-input)
 # Source: nixos/secrets/nats-operator.yaml.example (sops key schema)
@@ -28,7 +28,7 @@
 #
 # Deliberately NOT here (host / consumer-plan concern):
 #   * Client .creds per host (bound in each host's own secrets/<host>.yaml
-#     + sops.secrets — Plan 01-06).
+#     + sops.secrets — these are per-user creds under the shared AUDIT account).
 #   * Firewall rules (per D-11, host module territory).
 #   * Stream creation (stream-create oneshot in mcp-audit Plan 01-08).
 {
@@ -63,22 +63,16 @@ in
 
     accountNames = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      default = [
-        "audit"
-        "operator_ws"
-        "mcp_nats01"
-        "mcp_nats02"
-        "mcp_nats03"
-      ];
+      default = [ "audit" ];
       description = ''
         Accounts declared in secrets/nats-operator.yaml. Each <name> has a
         corresponding `nats_account_<name>_jwt` sops key which sops-nix
         decrypts to `/run/secrets/nats-account-<name>-jwt`. The nats-jwt-sync
         oneshot copies those files into /var/lib/nats/jwt/<name>.jwt so the
-        NATS "full" resolver picks them up. Per D-03 the Phase 1 default
-        list is: [ "audit" "operator_ws" "mcp_nats01" "mcp_nats02" "mcp_nats03" ]
-        — AUDIT (consumers), OPERATOR_WS (Evelyn's workstation), and one
-        per cluster member. Shape matches the hostnames mcp-nats01/02/03.
+        NATS "full" resolver picks them up. The standard deployment shape is a
+        single shared AUDIT account for application traffic; per-host producer
+        creds and consumer creds are users under that account, not separate
+        accounts.
       '';
     };
 
