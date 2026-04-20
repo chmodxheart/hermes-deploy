@@ -162,6 +162,8 @@ in
         RemainAfterExit = true;
         User = cfg.natsUser;
         Group = cfg.natsUser;
+        StateDirectory = "nats";
+        StateDirectoryMode = "0700";
       };
       script = ''
         set -euo pipefail

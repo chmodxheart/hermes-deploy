@@ -10,6 +10,7 @@ Use this directory for cross-cutting contracts between `terraform/` and
 - `ownership-boundary.md`: what Terraform owns, what NixOS owns, and where the crossover stops.
 - `template-workflow.md`: the supported way to build and register the NixOS Proxmox LXC template.
 - `nixos-handoff.md`: the stable contract exported by Terraform and consumed by the NixOS side.
+- `end-state-data-flow.md`: planned runtime architecture and data-flow diagram for Hermes + audit-plane hosts.
 
 ## Subtree Docs
 

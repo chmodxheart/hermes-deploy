@@ -126,6 +126,14 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # sops-nix validates secret ownership during activation, before the
+    # upstream Vector module's runtime assumptions are usable here.
+    users.groups.vector = { };
+    users.users.vector = {
+      isSystemUser = true;
+      group = "vector";
+    };
+
     # Enable-dotted form so plan-check greps match the canonical path.
     # Merged with the attrset block below via NixOS's option-merge rules.
     services.vector.enable = true;
