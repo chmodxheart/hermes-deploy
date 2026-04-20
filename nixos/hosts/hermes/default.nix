@@ -33,6 +33,8 @@
   # - Node 22 LTS from NodeSource (ubuntu:24.04's 18.19.1 is too old for MCP
   #   servers and mcporter — they require 20.11+)
   # - libopus0: Discord voice playback (without it the bot logs "Opus codec not found")
+  # - docker.io and git: optional CLIs that `hermes doctor` probes for locally
+  # - npm CLIs: OpenAI Codex and agent-browser for Hermes tool integrations
   # - supermemory: memory provider plugin, not bundled in hermes-agent's Nix
   #   Python env (declared as a pip dependency in plugins/memory/supermemory/plugin.yaml).
   systemd.services.hermes-agent-container-extras = {
@@ -46,7 +48,8 @@
     };
     script = ''
       set -euo pipefail
-      apt_pkgs="libopus0"
+      apt_pkgs="docker.io git libopus0"
+      npm_pkgs="@openai/codex agent-browser"
       pip_pkgs="supermemory"
 
       # ubuntu:24.04's default nodejs is 18.19.1; MCP servers and hermes-agent's
@@ -73,10 +76,27 @@
         ${pkgs.podman}/bin/podman exec hermes-agent apt-get install -y $missing_apt
       fi
 
+      for pkg in $npm_pkgs; do
+        if ! ${pkgs.podman}/bin/podman exec hermes-agent npm list -g "$pkg" >/dev/null 2>&1; then
+          ${pkgs.podman}/bin/podman exec hermes-agent npm install -g "$pkg"
+        fi
+      done
+
       # pip lives in the uv-managed venv at /home/hermes/.venv that the
       # container entrypoint sets up on first boot. Use its pip explicitly —
       # it's not on root's PATH via `podman exec`.
       venv_pip=/home/hermes/.venv/bin/pip
+      venv_bin=/home/hermes/.venv/bin
+
+      # The doctor command expects the editable-install style CLI entrypoint to
+      # exist in the managed venv. Hermes itself is supplied by Nix, so bridge
+      # that expectation with a symlink into the venv bin dir.
+      ${pkgs.podman}/bin/podman exec -u hermes hermes-agent bash -lc '
+        set -euo pipefail
+        venv_bin=$1
+        mkdir -p "$venv_bin"
+        ln -sf "$(command -v hermes)" "$venv_bin/hermes"
+      ' _ "$venv_bin"
 
       # One-time transition cleanup from the Hindsight era. Safe as a no-op once
       # the old packages aren't present on any deployed host.
@@ -89,6 +109,10 @@
           ${pkgs.podman}/bin/podman exec -u hermes hermes-agent "$venv_pip" install "$pkg"
         fi
       done
+
+      # Warm the local Skills Hub state so `hermes doctor` stops reporting the
+      # uninitialized directory on freshly bootstrapped hosts.
+      ${pkgs.podman}/bin/podman exec -u hermes hermes-agent hermes skills list >/dev/null 2>&1 || true
     '';
   };
 
@@ -113,7 +137,7 @@
     };
 
     settings = {
-      _config_version = 17;
+      _config_version = 18;
 
       model = {
         default = "claude-sonnet-4-6";
