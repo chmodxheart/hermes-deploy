@@ -1,0 +1,46 @@
+set shell := ["fish", "-c"]
+set dotenv-load := false
+
+# All recipes route terraform through `op run` so MinIO backend credentials
+# are resolved from 1Password at runtime and live only in the terraform
+# child process environment. Never run bare `terraform <cmd>` -- the backend
+# will fail to authenticate without AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY.
+
+_default:
+    @just --list --unsorted
+
+# Initialize backend (first run, or after backend config changes)
+init:
+    op run --env-file=.env.op -- terraform init
+
+# Migrate existing local state into the S3 backend
+migrate-state:
+    op run --env-file=.env.op -- terraform init -migrate-state
+
+# Show planned changes
+plan:
+    op run --env-file=.env.op -- terraform plan
+
+# Apply planned changes
+apply:
+    op run --env-file=.env.op -- terraform apply
+
+# Destroy all managed resources (use with care)
+destroy:
+    op run --env-file=.env.op -- terraform destroy
+
+# List resources in remote state
+state-list:
+    op run --env-file=.env.op -- terraform state list
+
+# Format all .tf files in this tree
+fmt:
+    terraform fmt -recursive
+
+# Static validation (no backend/credentials needed)
+validate:
+    terraform validate
+
+# Lint with tflint
+lint:
+    tflint --recursive

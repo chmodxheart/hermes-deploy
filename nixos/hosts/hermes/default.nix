@@ -89,14 +89,26 @@
       venv_bin=/home/hermes/.venv/bin
 
       # The doctor command expects the editable-install style CLI entrypoint to
-      # exist in the managed venv. Hermes itself is supplied by Nix, so bridge
-      # that expectation with a symlink into the venv bin dir.
+      # exist in the managed venv. Hermes itself is supplied outside the venv,
+      # and may not be resolvable on PATH during provisioning, so drop a tiny
+      # wrapper in place that defers PATH lookup until execution time.
       ${pkgs.podman}/bin/podman exec -u hermes hermes-agent bash -lc '
         set -euo pipefail
-        venv_bin=$1
+        venv_bin=/home/hermes/.venv/bin
         mkdir -p "$venv_bin"
-        ln -sf "$(command -v hermes)" "$venv_bin/hermes"
-      ' _ "$venv_bin"
+        printf "%s\n" \
+          "#!/usr/bin/env bash" \
+          "set -euo pipefail" \
+          "" \
+          "if command -v hermes >/dev/null 2>&1; then" \
+          "  exec \"\$(command -v hermes)\" \"\$@\"" \
+          "fi" \
+          "" \
+          "printf \"%s\\n\" \"hermes CLI is not on PATH inside the container\" >&2" \
+          "exit 127" \
+          > "$venv_bin/hermes"
+        chmod 0755 "$venv_bin/hermes"
+      '
 
       # One-time transition cleanup from the Hindsight era. Safe as a no-op once
       # the old packages aren't present on any deployed host.
@@ -300,7 +312,7 @@
 
       display = {
         compact = false;
-        personality = "kawaii";
+        personality = "concise";
         resume_display = "full";
         busy_input_mode = "interrupt";
         bell_on_complete = false;

@@ -103,6 +103,7 @@
         packages = with pkgs; [
           age
           nil
+          nixos-rebuild
           nixfmt-rfc-style
           sops
           ssh-to-age

@@ -3,9 +3,9 @@
 #
 # Idempotent deploy. On a fresh LXC: extracts the host's age privkey
 # from secrets/host-sops-keys.yaml and pushes it to /var/lib/sops-nix/
-# on the target. On an already-configured LXC: skips the key push. In
-# both cases, runs `nixos-rebuild switch --target-host` against the
-# given host.
+# on the target via sudo. On an already-configured LXC: skips the key
+# push. In both cases, runs `nixos-rebuild switch --target-host`
+# against the given host.
 #
 # Invoked by terraform/main.tf, or directly by the operator.
 #
@@ -16,7 +16,8 @@ set -euo pipefail
 
 hostname="${1:?Usage: $0 <hostname>}"
 domain="${MCP_DOMAIN:-samesies.gay}"
-target="root@${hostname}.${domain}"
+deploy_user="${DEPLOY_USER:-eve}"
+target="${deploy_user}@${hostname}.${domain}"
 
 # --- sanity -----------------------------------------------------------
 
@@ -66,7 +67,7 @@ ssh -o BatchMode=yes -o ConnectTimeout=3 "$target" true 2>/dev/null || {
 
 # --- push age key if missing ------------------------------------------
 
-if ssh "$target" 'test -s /var/lib/sops-nix/key.txt' 2>/dev/null; then
+if ssh "$target" 'sudo test -s /var/lib/sops-nix/key.txt' 2>/dev/null; then
   echo "[$hostname] /var/lib/sops-nix/key.txt already present — skipping key push"
 else
   echo "[$hostname] pushing age key..."
@@ -77,11 +78,10 @@ else
     echo "       (run: $repo_root/scripts/add-host.sh $hostname)" >&2
     exit 1
   fi
-  printf '%s\n' "$privkey" | ssh "$target" '
-    set -e
-    install -d -m 700 -o root -g root /var/lib/sops-nix
-    install -m 600 -o root -g root /dev/stdin /var/lib/sops-nix/key.txt
-  '
+  printf '%s\n' "$privkey" | ssh "$target" 'sh -eu -c '\''
+    sudo install -d -m 700 -o root -g root /var/lib/sops-nix
+    sudo install -m 600 -o root -g root /dev/stdin /var/lib/sops-nix/key.txt
+  '\'''
   echo "[$hostname] age key installed at /var/lib/sops-nix/key.txt"
 fi
 
@@ -91,6 +91,7 @@ echo "[$hostname] running nixos-rebuild switch..."
 "${rebuild_cmd[@]}" switch \
   --flake "$nixos_root#${hostname}" \
   --target-host "$target" \
+  --use-remote-sudo \
   --fast
 
 echo "[$hostname] OK: deployed"
