@@ -50,6 +50,7 @@
   i18n.defaultLocale = "en_US.UTF-8";
 
   networking = {
+    domain = "samesies.gay";
     nftables.enable = true;
     firewall = {
       enable = true;
@@ -65,7 +66,14 @@
     settings = {
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
-      PermitRootLogin = "no";
+      # Key-only root login is required for the bootstrap SSH hop performed by
+      # scripts/bootstrap-host.sh (invoked by terraform/main.tf's
+      # null_resource.nixos_deploy). Terraform provisions root's
+      # authorized_keys via the bpg provider's initialization.user_account
+      # block (terraform/modules/lxc-container/main.tf), and the eve user
+      # does not exist until this very rebuild has been applied. "prohibit-password"
+      # forbids interactive root password auth while allowing key-based root login.
+      PermitRootLogin = "prohibit-password";
       X11Forwarding = false;
       AllowTcpForwarding = "yes";
       ClientAliveInterval = 300;

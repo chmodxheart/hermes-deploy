@@ -13,7 +13,10 @@
 
   proxmoxLXC = {
     manageNetwork = false;
-    manageHostName = false;
+    # We set networking.hostName declaratively per-host via flake.nix mkHost.
+    # Leaving this false causes proxmox-lxc.nix to force hostName to "" so
+    # Proxmox can inject it at boot — which clobbers our declarative value.
+    manageHostName = true;
   };
 
   # Nix build sandbox needs mount namespaces that Proxmox LXC doesn't expose

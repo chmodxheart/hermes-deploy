@@ -18,7 +18,7 @@
 
 let
   # Host-identity bindings (CONTEXT §infra_facts).
-  lxcIp = "10.0.2.10";
+  lxcIp = "10.0.120.20";
   # Hermes source address. Appears only in this let-binding — never in an
   # accept rule below. That absence IS the AUDIT-03 / D-11 invariant; the
   # `assert-no-hermes-reach` flake-check greps every rendered table for this
@@ -32,10 +32,10 @@ let
   # mcp-nats-{1,2,3}; used to scope the step-ca ACME port. Every cert-bootstrap
   # client in the audit plane bootstraps through this mcp-audit:8443.
   auditPlaneAllowlist = [
-    "10.0.2.10"
-    "10.0.2.11"
-    "10.0.2.12"
-    "10.0.2.13"
+    "10.0.120.20"
+    "10.0.120.21"
+    "10.0.120.22"
+    "10.0.120.23"
   ];
   # step-ca ACME is peer-only within the audit plane. Hermes is deliberately
   # absent (AUDIT-03 / D-11). If a future phase needs hermes-issued certs it
@@ -85,6 +85,18 @@ in
         group = "root";
         mode = "0444";
       };
+      # NATS client credentials for Vector's NATS source+sink. Populated after
+      # the NATS cluster is bootstrapped (Plan 01-09). Until then the file is
+      # materialized with REPLACE_ME content; vector.service has
+      # ConditionPathExists=/run/secrets/nats-client.creds so it stays inactive
+      # (not crash-looping) until real creds are substituted and a rebuild runs.
+      "nats-client-creds" = {
+        key = "nats_client_creds";
+        path = "/run/secrets/nats-client.creds";
+        owner = "vector";
+        group = "vector";
+        mode = "0400";
+      };
     };
   };
 
@@ -94,6 +106,17 @@ in
   # same audit pipeline it hosts.
   services.mcpVectorAuditClient.enable = true;
   services.mcpVectorAuditClient.lxcIp = lxcIp;
+  # mcp-audit hosts step-ca locally; use the exported root cert path
+  # instead of the sops-provisioned one (which is placeholder-only
+  # on the CA host since the root is generated on first boot).
+  services.mcpVectorAuditClient.caRootPath = "/var/lib/step-ca-root/root_ca.pem";
+
+  # Order Vector's cert-bootstrap after the root export so the --root
+  # path is guaranteed to exist.
+  systemd.services.vector-client-cert = {
+    after = [ "step-ca-root-export.service" ];
+    requires = [ "step-ca-root-export.service" ];
+  };
 
   # --- Baseline Prom exporters + D-17 narrow carve-out ---
   services.mcpPromExporters.enable = true;
@@ -127,6 +150,9 @@ in
         type filter hook input priority 0;
         ip saddr ${sshAllowlist} tcp dport 22 accept
         ip saddr { ${lib.concatStringsSep ", " acmeAllowlist} } tcp dport 8443 accept
+        # ACME HTTP-01 challenge: step-ca reaches back to each audit-plane
+        # host's :80 to verify cert ownership. Scoped to those peers only.
+        ip saddr { ${lib.concatStringsSep ", " acmeAllowlist} } tcp dport 80 accept
       }
     '';
   };
@@ -143,9 +169,9 @@ in
   services.resolved.enable = true;
   services.resolved.domains = [ "samesies.gay" ];
   networking.extraHosts = ''
-    10.0.2.10 mcp-audit.samesies.gay ca.samesies.gay
-    10.0.2.11 mcp-nats01.samesies.gay
-    10.0.2.12 mcp-nats02.samesies.gay
-    10.0.2.13 mcp-nats03.samesies.gay
+    10.0.120.20 mcp-audit.samesies.gay ca.samesies.gay
+    10.0.120.21 mcp-nats01.samesies.gay
+    10.0.120.22 mcp-nats02.samesies.gay
+    10.0.120.23 mcp-nats03.samesies.gay
   '';
 }

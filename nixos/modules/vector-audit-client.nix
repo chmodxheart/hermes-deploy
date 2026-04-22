@@ -73,7 +73,7 @@ let
       /run/vector-certs/client.key \
       --provisioner acme \
       --ca-url ${cfg.caUrl} \
-      --root /run/secrets/step-ca-root \
+      --root ${cfg.caRootPath} \
       --force
   '';
 in
@@ -89,7 +89,7 @@ in
         forced to pass their own IP. k8s Prometheus scrapes this address
         via the nftables carve-out in modules/mcp-prom-exporters.nix.
       '';
-      example = "10.0.2.11";
+      example = "10.0.120.21";
     };
 
     natsPeers = lib.mkOption {
@@ -111,6 +111,18 @@ in
       default = "https://ca.samesies.gay:8443";
       description = ''
         step-ca base URL used by the vector-client-cert oneshot.
+      '';
+    };
+
+    caRootPath = lib.mkOption {
+      type = lib.types.path;
+      default = "/run/secrets/step-ca-root";
+      description = ''
+        Path to the PEM-encoded step-ca root certificate used by both the
+        cert-bootstrap oneshot (`step ca certificate --root`) and the
+        Vector NATS sink (`tls.ca_file`). Default is the sops-provisioned
+        secret path; on mcp-audit itself the CA files live locally and
+        this is overridden to the path exported by `step-ca-root-export`.
       '';
     };
 
@@ -181,7 +193,7 @@ in
             };
             tls = {
               enabled = true;
-              ca_file = "/run/secrets/step-ca-root";
+              ca_file = cfg.caRootPath;
               crt_file = "/run/vector-certs/client.crt";
               key_file = "/run/vector-certs/client.key";
             };
@@ -226,6 +238,10 @@ in
         Type = "oneshot";
         User = "vector";
         Group = "vector";
+        # ACME HTTP-01 standalone challenge binds :80 — requires
+        # CAP_NET_BIND_SERVICE for the unprivileged vector user.
+        AmbientCapabilities = [ "CAP_NET_BIND_SERVICE" ];
+        CapabilityBoundingSet = [ "CAP_NET_BIND_SERVICE" ];
         ExecStartPre = waitForStepCa;
         ExecStart = vectorCertRequest;
       };
@@ -248,6 +264,14 @@ in
     systemd.services.vector = {
       requires = [ "vector-client-cert.service" ];
       after = [ "vector-client-cert.service" ];
+      unitConfig = {
+        # Vector's NATS source+sink require /run/secrets/nats-client.creds.
+        # Before the NATS cluster is bootstrapped that secret doesn't exist.
+        # Rather than gate the config with a feature flag, skip the unit
+        # entirely until the creds file appears; `vector-creds-watch.path`
+        # (below) will start it the moment the file is created by sops-nix.
+        ConditionPathExists = "/run/secrets/nats-client.creds";
+      };
       serviceConfig = {
         ReadWritePaths = [
           "/var/lib/vector"
@@ -266,6 +290,18 @@ in
           "@system-service"
           "~@privileged"
         ];
+      };
+    };
+
+    # Start vector.service automatically when /run/secrets/nats-client.creds
+    # appears (after the NATS cluster is bootstrapped and the sops secret
+    # is materialized). Until then the Condition on vector.service keeps it
+    # inactive without errors.
+    systemd.paths.vector-creds-watch = {
+      wantedBy = [ "multi-user.target" ];
+      pathConfig = {
+        PathExists = "/run/secrets/nats-client.creds";
+        Unit = "vector.service";
       };
     };
   };
