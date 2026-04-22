@@ -29,9 +29,13 @@
     };
   };
 
+  # autoUpgrade tracks the canonical remote. Keep this URL in sync with
+  # `git remote get-url origin`; the `just check-autoupgrade` recipe asserts
+  # this on demand. When a known-good revision is reached, bump this to
+  # pin a tag (e.g. `?ref=v0.1.0`) instead of tracking `main`.
   system.autoUpgrade = {
     enable = true;
-    flake = "github:escidmore/hermes-deploy?dir=nixos";
+    flake = "github:chmodxheart/hermes-deploy?dir=nixos";
     flags = [
       "--update-input"
       "nixpkgs"

@@ -27,8 +27,21 @@ deploy HOST=host TARGET="":
     #!/usr/bin/env fish
     set -l target "{{TARGET}}"
     if test -z "$target"
-        set target "{{HOST}}"
+        ../scripts/bootstrap-host.sh "{{HOST}}"
+        exit $status
     end
+
+    if string match -qr '^{{HOST}}(\..+)?$' -- "$target"
+        if string match -q '*.*' -- "$target"
+            set -l parts (string split '.' -- "$target")
+            set -l domain (string join '.' $parts[2..-1])
+            env MCP_DOMAIN="$domain" ../scripts/bootstrap-host.sh "{{HOST}}"
+        else
+            ../scripts/bootstrap-host.sh "{{HOST}}"
+        end
+        exit $status
+    end
+
     nixos-rebuild switch --flake ".#{{HOST}}" \
         --target-host "eve@$target" --use-remote-sudo --fast
 
@@ -47,3 +60,15 @@ edit-secrets:
 # Derive the age public recipient from the current user's sops key
 show-recipient:
     age-keygen -y ~/.config/sops/age/keys.txt
+
+# Verify system.autoUpgrade.flake URL matches git origin remote
+check-autoupgrade:
+    #!/usr/bin/env fish
+    set -l configured (rg -oP 'flake = "github:\K[^/]+/[^?"]+' modules/common.nix | head -n 1)
+    set -l remote (git -C .. remote get-url origin | sed -E 's|.*[:/]([^/:]+/[^/]+?)(\.git)?$|\1|')
+    if test "$configured" = "$remote"
+        echo "OK: autoUpgrade flake ($configured) matches origin remote"
+    else
+        echo "MISMATCH: autoUpgrade='$configured' but origin='$remote'"
+        exit 1
+    end
