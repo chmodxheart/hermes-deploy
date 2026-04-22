@@ -264,6 +264,15 @@ in
     systemd.services.vector = {
       requires = [ "vector-client-cert.service" ];
       after = [ "vector-client-cert.service" ];
+      unitConfig = {
+        # Vector requires /run/secrets/nats-client.creds (NATS auth). The
+        # sops binding for this file is intentionally omitted from mcp-audit
+        # until the NATS cluster is bootstrapped and real creds are available.
+        # Without the binding the file never exists, this condition fails, and
+        # vector stays dormant. The path watcher below starts vector
+        # automatically once the file appears after a real-creds rebuild.
+        ConditionPathExists = "/run/secrets/nats-client.creds";
+      };
       serviceConfig = {
         ReadWritePaths = [
           "/var/lib/vector"
@@ -285,38 +294,13 @@ in
       };
     };
 
-    # vector-creds-activate is a oneshot triggered by the path watcher below.
-    # It checks whether /run/secrets/nats-client.creds contains real creds
-    # (not the REPLACE_ME placeholder written before NATS is bootstrapped).
-    # If real creds are present it starts vector.service; otherwise it exits
-    # cleanly so the path watcher can re-trigger on the next file change.
-    # This indirection is necessary because path-unit-triggered service starts
-    # bypass ExecCondition in systemd, making direct guards unreliable.
-    systemd.services.vector-creds-activate = {
-      description = "Activate Vector when NATS credentials become available";
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = false;
-        ExecStart = let
-          activateScript = pkgs.writeShellScript "vector-creds-activate" ''
-            if ${pkgs.gnugrep}/bin/grep -q REPLACE_ME /run/secrets/nats-client.creds; then
-              echo "vector-creds-activate: placeholder creds detected, skipping vector start"
-              exit 0
-            fi
-            echo "vector-creds-activate: real creds detected, starting vector.service"
-            ${pkgs.systemd}/bin/systemctl start vector.service
-          '';
-        in "${activateScript}";
-      };
-    };
-
-    # Watch for changes to the NATS creds file. Triggers vector-creds-activate
-    # (not vector directly) so the placeholder check runs before vector starts.
+    # Start vector.service automatically when /run/secrets/nats-client.creds
+    # appears (sops-nix materializes it after a rebuild with real NATS creds).
     systemd.paths.vector-creds-watch = {
       wantedBy = [ "multi-user.target" ];
       pathConfig = {
-        PathChanged = "/run/secrets/nats-client.creds";
-        Unit = "vector-creds-activate.service";
+        PathExists = "/run/secrets/nats-client.creds";
+        Unit = "vector.service";
       };
     };
   };

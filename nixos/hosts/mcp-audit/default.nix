@@ -85,21 +85,14 @@ in
         group = "root";
         mode = "0444";
       };
-      # NATS client credentials for Vector's NATS source+sink. Populated after
-      # the NATS cluster is bootstrapped (Plan 01-09). Until then the file is
-      # materialized with REPLACE_ME content; vector.service has
-      # ConditionPathExists=/run/secrets/nats-client.creds so it stays inactive
-      # (not crash-looping) until real creds are substituted and a rebuild runs.
-      "nats-client-creds" = {
-        key = "nats_client_creds";
-        path = "/run/secrets/nats-client.creds";
-        owner = "vector";
-        group = "vector";
-        mode = "0400";
-      };
+      # nats-client-creds binding is intentionally absent until the NATS
+      # cluster is bootstrapped and real creds are available. Without the
+      # binding sops-nix does not materialize the file, the path watcher
+      # never fires, and vector stays dormant with no crash loop.
+      # To activate: populate nats_client_creds in nixos/secrets/mcp-audit.yaml
+      # with real creds, re-add this binding, and run nixos-rebuild switch.
     };
   };
-
   # --- Vector audit client (publish side — D-07) ---
   # mcp-audit also runs a Vector client that forwards its own journald into
   # the NATS cluster, so operator activity on this box is captured by the
