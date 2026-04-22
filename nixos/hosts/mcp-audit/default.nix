@@ -134,6 +134,7 @@ in
   # Rule set:
   #   - 22/tcp   (SSH)        ← sshAllowlist (LAN; tighten in Phase 2)
   #   - 8443/tcp (step-ca)    ← acmeAllowlist (audit-plane peers only)
+  #   - 80/tcp   (ACME HTTP-01 challenge) ← acmeAllowlist
   #
   # Deliberately absent:
   #   - 3000/tcp (Langfuse web UI) — access via SSH tunnel only; no LAN reach
@@ -143,6 +144,16 @@ in
   #
   # Prom ports (9100, 9598) are opened by modules/mcp-prom-exporters.nix
   # in its own table, scoped to promSourceIp.
+  #
+  # NOTE: networking.firewall (nixos-fw, ip family) and nftables.tables
+  # (inet family) both hook input at priority 0. nixos-fw drops unmatched
+  # packets before the inet accept fires, so audit-plane ports must be
+  # explicitly allowed in BOTH places. extraInputRules injects into nixos-fw
+  # directly; the inet table keeps the structured rule set for auditability.
+  networking.firewall.extraInputRules = ''
+    ip saddr { ${lib.concatStringsSep ", " acmeAllowlist} } tcp dport 8443 accept
+    ip saddr { ${lib.concatStringsSep ", " acmeAllowlist} } tcp dport 80 accept
+  '';
   networking.nftables.tables.mcp-audit-ingress = {
     family = "inet";
     content = ''
