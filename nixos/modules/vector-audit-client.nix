@@ -264,32 +264,6 @@ in
     systemd.services.vector = {
       requires = [ "vector-client-cert.service" ];
       after = [ "vector-client-cert.service" ];
-      unitConfig = {
-        # Vector's NATS source+sink require /run/secrets/nats-client.creds.
-        # The file is always materialized by sops-nix (even before the NATS
-        # cluster is bootstrapped — as a REPLACE_ME placeholder). Two guards:
-        # 1. ConditionPathExists — skip silently if file is absent entirely.
-        # 2. ExecCondition — skip silently if file still contains the
-        #    placeholder value written before real NATS creds are available.
-        #    ExecCondition exit≠0 is treated as a condition failure (no
-        #    restart triggered), unlike ExecStartPre which would be a real
-        #    failure. vector-creds-watch.path will re-trigger when the file
-        #    is updated with real creds.
-        ConditionPathExists = "/run/secrets/nats-client.creds";
-        # Skip silently when placeholder creds are present. ExecCondition
-        # exits 0 = proceed, non-zero = skip (no restart). We need non-zero
-        # when REPLACE_ME is found, so use grep -L (lists files NOT matching)
-        # piped through a check: if the file is NOT in grep -L output it
-        # means the pattern WAS found → we want to fail → use grep -q with
-        # inverted logic via a wrapper script stored in the Nix store.
-        ExecCondition = let
-          checkScript = pkgs.writeShellScript "vector-creds-check" ''
-            if ${pkgs.gnugrep}/bin/grep -q REPLACE_ME /run/secrets/nats-client.creds; then
-              exit 1
-            fi
-          '';
-        in "${checkScript}";
-      };
       serviceConfig = {
         ReadWritePaths = [
           "/var/lib/vector"
@@ -311,19 +285,38 @@ in
       };
     };
 
-    # Start vector.service automatically when /run/secrets/nats-client.creds
-    # appears (after the NATS cluster is bootstrapped and the sops secret
-    # is materialized). Until then the Condition on vector.service keeps it
-    # inactive without errors.
+    # vector-creds-activate is a oneshot triggered by the path watcher below.
+    # It checks whether /run/secrets/nats-client.creds contains real creds
+    # (not the REPLACE_ME placeholder written before NATS is bootstrapped).
+    # If real creds are present it starts vector.service; otherwise it exits
+    # cleanly so the path watcher can re-trigger on the next file change.
+    # This indirection is necessary because path-unit-triggered service starts
+    # bypass ExecCondition in systemd, making direct guards unreliable.
+    systemd.services.vector-creds-activate = {
+      description = "Activate Vector when NATS credentials become available";
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = false;
+        ExecStart = let
+          activateScript = pkgs.writeShellScript "vector-creds-activate" ''
+            if ${pkgs.gnugrep}/bin/grep -q REPLACE_ME /run/secrets/nats-client.creds; then
+              echo "vector-creds-activate: placeholder creds detected, skipping vector start"
+              exit 0
+            fi
+            echo "vector-creds-activate: real creds detected, starting vector.service"
+            ${pkgs.systemd}/bin/systemctl start vector.service
+          '';
+        in "${activateScript}";
+      };
+    };
+
+    # Watch for changes to the NATS creds file. Triggers vector-creds-activate
+    # (not vector directly) so the placeholder check runs before vector starts.
     systemd.paths.vector-creds-watch = {
       wantedBy = [ "multi-user.target" ];
       pathConfig = {
-        # PathChanged fires whenever the file content is replaced — including
-        # when sops-nix rewrites it with real NATS creds after bootstrap.
-        # vector.service's ExecCondition will then re-evaluate and proceed
-        # only if the placeholder is gone.
         PathChanged = "/run/secrets/nats-client.creds";
-        Unit = "vector.service";
+        Unit = "vector-creds-activate.service";
       };
     };
   };
