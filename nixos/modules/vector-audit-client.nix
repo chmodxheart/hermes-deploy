@@ -276,12 +276,19 @@ in
         #    failure. vector-creds-watch.path will re-trigger when the file
         #    is updated with real creds.
         ConditionPathExists = "/run/secrets/nats-client.creds";
-        # Skip silently when placeholder creds are present. The `!` prefix
-        # is systemd's exec-line negation (not shell): if grep exits 0
-        # (placeholder found), `!` inverts to condition-not-met → unit
-        # skipped without triggering a restart. vector-creds-watch.path
-        # re-triggers when sops-nix rewrites the file with real creds.
-        ExecCondition = "!${pkgs.gnugrep}/bin/grep -q REPLACE_ME /run/secrets/nats-client.creds";
+        # Skip silently when placeholder creds are present. ExecCondition
+        # exits 0 = proceed, non-zero = skip (no restart). We need non-zero
+        # when REPLACE_ME is found, so use grep -L (lists files NOT matching)
+        # piped through a check: if the file is NOT in grep -L output it
+        # means the pattern WAS found → we want to fail → use grep -q with
+        # inverted logic via a wrapper script stored in the Nix store.
+        ExecCondition = let
+          checkScript = pkgs.writeShellScript "vector-creds-check" ''
+            if ${pkgs.gnugrep}/bin/grep -q REPLACE_ME /run/secrets/nats-client.creds; then
+              exit 1
+            fi
+          '';
+        in "${checkScript}";
       };
       serviceConfig = {
         ReadWritePaths = [
