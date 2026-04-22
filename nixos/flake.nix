@@ -90,6 +90,18 @@
           modules = [
             ./profiles/lxc.nix
             ./hosts/mcp-audit
+            ./hosts/mcp-audit/vector-client.nix
+          ];
+        };
+
+        # Phase-1 target: mcp-audit without Vector client. Used by
+        # bootstrap-cluster.sh before the NATS cluster exists. Switch to
+        # `mcp-audit` (full) after NATS creds are provisioned.
+        mcp-audit-phase1 = mkHost {
+          hostName = "mcp-audit";
+          modules = [
+            ./profiles/lxc.nix
+            ./hosts/mcp-audit
           ];
         };
       };

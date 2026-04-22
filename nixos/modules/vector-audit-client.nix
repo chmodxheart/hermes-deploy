@@ -265,12 +265,10 @@ in
       requires = [ "vector-client-cert.service" ];
       after = [ "vector-client-cert.service" ];
       unitConfig = {
-        # Vector requires /run/secrets/nats-client.creds (NATS auth). The
-        # sops binding for this file is intentionally omitted from mcp-audit
-        # until the NATS cluster is bootstrapped and real creds are available.
-        # Without the binding the file never exists, this condition fails, and
-        # vector stays dormant. The path watcher below starts vector
-        # automatically once the file appears after a real-creds rebuild.
+        # Skip start when NATS creds are not yet provisioned. The orchestrator
+        # (scripts/bootstrap-cluster.sh) handles re-deploying after real creds
+        # are written, at which point this condition becomes true and vector
+        # starts on the next rebuild.
         ConditionPathExists = "/run/secrets/nats-client.creds";
       };
       serviceConfig = {
@@ -291,16 +289,6 @@ in
           "@system-service"
           "~@privileged"
         ];
-      };
-    };
-
-    # Start vector.service automatically when /run/secrets/nats-client.creds
-    # appears (sops-nix materializes it after a rebuild with real NATS creds).
-    systemd.paths.vector-creds-watch = {
-      wantedBy = [ "multi-user.target" ];
-      pathConfig = {
-        PathExists = "/run/secrets/nats-client.creds";
-        Unit = "vector.service";
       };
     };
   };

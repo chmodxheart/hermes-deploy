@@ -52,7 +52,6 @@ in
     ../../modules/mcp-audit.nix
     ../../modules/mcp-otel.nix
     ../../modules/step-ca.nix
-    ../../modules/vector-audit-client.nix
     ../../modules/mcp-prom-exporters.nix
     ../../modules/pbs-excludes.nix
   ];
@@ -85,32 +84,8 @@ in
         group = "root";
         mode = "0444";
       };
-      # nats-client-creds binding is intentionally absent until the NATS
-      # cluster is bootstrapped and real creds are available. Without the
-      # binding sops-nix does not materialize the file, the path watcher
-      # never fires, and vector stays dormant with no crash loop.
-      # To activate: populate nats_client_creds in nixos/secrets/mcp-audit.yaml
-      # with real creds, re-add this binding, and run nixos-rebuild switch.
     };
   };
-  # --- Vector audit client (publish side — D-07) ---
-  # mcp-audit also runs a Vector client that forwards its own journald into
-  # the NATS cluster, so operator activity on this box is captured by the
-  # same audit pipeline it hosts.
-  services.mcpVectorAuditClient.enable = true;
-  services.mcpVectorAuditClient.lxcIp = lxcIp;
-  # mcp-audit hosts step-ca locally; use the exported root cert path
-  # instead of the sops-provisioned one (which is placeholder-only
-  # on the CA host since the root is generated on first boot).
-  services.mcpVectorAuditClient.caRootPath = "/var/lib/step-ca-root/root_ca.pem";
-
-  # Order Vector's cert-bootstrap after the root export so the --root
-  # path is guaranteed to exist.
-  systemd.services.vector-client-cert = {
-    after = [ "step-ca-root-export.service" ];
-    requires = [ "step-ca-root-export.service" ];
-  };
-
   # --- Baseline Prom exporters + D-17 narrow carve-out ---
   services.mcpPromExporters.enable = true;
   services.mcpPromExporters.promSourceIp = promSourceIp;

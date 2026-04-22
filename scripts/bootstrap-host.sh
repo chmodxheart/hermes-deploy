@@ -14,9 +14,13 @@
 
 set -euo pipefail
 
-hostname="${1:?Usage: $0 <hostname>}"
+hostname="${1:?Usage: $0 <hostname> [flake-target]}"
+# Optional second argument overrides the flake output name. Used by
+# bootstrap-cluster.sh to deploy mcp-audit-phase1 (without Vector) before
+# NATS creds are available, then mcp-audit (full) once they are.
+flake_target="${2:-$hostname}"
 domain="${MCP_DOMAIN:-samesies.gay}"
-deploy_user="${DEPLOY_USER:-eve}"
+deploy_user="${DEPLOY_USER:-root}"
 target="${deploy_user}@${hostname}.${domain}"
 
 # --- sanity -----------------------------------------------------------
@@ -89,7 +93,7 @@ fi
 
 echo "[$hostname] running nixos-rebuild switch..."
 "${rebuild_cmd[@]}" switch \
-  --flake "$nixos_root#${hostname}" \
+  --flake "$nixos_root#${flake_target}" \
   --target-host "$target" \
   --use-remote-sudo \
   --fast
