@@ -266,11 +266,17 @@ in
       after = [ "vector-client-cert.service" ];
       unitConfig = {
         # Vector's NATS source+sink require /run/secrets/nats-client.creds.
-        # Before the NATS cluster is bootstrapped that secret doesn't exist.
-        # Rather than gate the config with a feature flag, skip the unit
-        # entirely until the creds file appears; `vector-creds-watch.path`
-        # (below) will start it the moment the file is created by sops-nix.
+        # The file is always materialized by sops-nix (even before the NATS
+        # cluster is bootstrapped — as a REPLACE_ME placeholder). Two guards:
+        # 1. ConditionPathExists — skip silently if file is absent entirely.
+        # 2. ExecCondition — skip silently if file still contains the
+        #    placeholder value written before real NATS creds are available.
+        #    ExecCondition exit≠0 is treated as a condition failure (no
+        #    restart triggered), unlike ExecStartPre which would be a real
+        #    failure. vector-creds-watch.path will re-trigger when the file
+        #    is updated with real creds.
         ConditionPathExists = "/run/secrets/nats-client.creds";
+        ExecCondition = "/bin/sh -c '! grep -q REPLACE_ME /run/secrets/nats-client.creds'";
       };
       serviceConfig = {
         ReadWritePaths = [
@@ -300,7 +306,11 @@ in
     systemd.paths.vector-creds-watch = {
       wantedBy = [ "multi-user.target" ];
       pathConfig = {
-        PathExists = "/run/secrets/nats-client.creds";
+        # PathChanged fires whenever the file content is replaced — including
+        # when sops-nix rewrites it with real NATS creds after bootstrap.
+        # vector.service's ExecCondition will then re-evaluate and proceed
+        # only if the placeholder is gone.
+        PathChanged = "/run/secrets/nats-client.creds";
         Unit = "vector.service";
       };
     };
