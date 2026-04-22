@@ -104,7 +104,7 @@ in
       family = "inet";
       content = ''
         chain input {
-          type filter hook input priority 0;
+          type filter hook input priority filter;
           ip saddr ${cfg.promSourceIp} tcp dport { ${lib.concatStringsSep ", " (map toString cfg.exporterPorts)} } accept
         }
       '';

@@ -131,10 +131,12 @@ in
   ];
 
   # --- D-11 declarative nftables ---
-  # Rule set:
-  #   - 22/tcp   (SSH)        ← sshAllowlist (LAN; tighten in Phase 2)
-  #   - 8443/tcp (step-ca)    ← acmeAllowlist (audit-plane peers only)
-  #   - 80/tcp   (ACME HTTP-01 challenge) ← acmeAllowlist
+  # Single inet table owns all input filtering for this host (nixos-fw is
+  # disabled in common.nix). Rule set:
+  #   - icmp/icmpv6    ← unrestricted (ping)
+  #   - 22/tcp         ← sshAllowlist (LAN; tighten in Phase 2)
+  #   - 8443/tcp       ← acmeAllowlist (audit-plane peers only)
+  #   - 80/tcp         ← acmeAllowlist (ACME HTTP-01 challenge)
   #
   # Deliberately absent:
   #   - 3000/tcp (Langfuse web UI) — access via SSH tunnel only; no LAN reach
@@ -144,21 +146,15 @@ in
   #
   # Prom ports (9100, 9598) are opened by modules/mcp-prom-exporters.nix
   # in its own table, scoped to promSourceIp.
-  #
-  # NOTE: networking.firewall (nixos-fw, ip family) and nftables.tables
-  # (inet family) both hook input at priority 0. nixos-fw drops unmatched
-  # packets before the inet accept fires, so audit-plane ports must be
-  # explicitly allowed in BOTH places. extraInputRules injects into nixos-fw
-  # directly; the inet table keeps the structured rule set for auditability.
-  networking.firewall.extraInputRules = ''
-    ip saddr { ${lib.concatStringsSep ", " acmeAllowlist} } tcp dport 8443 accept
-    ip saddr { ${lib.concatStringsSep ", " acmeAllowlist} } tcp dport 80 accept
-  '';
   networking.nftables.tables.mcp-audit-ingress = {
     family = "inet";
     content = ''
       chain input {
-        type filter hook input priority 0;
+        type filter hook input priority filter; policy drop;
+        ct state established,related accept
+        iifname "lo" accept
+        icmp type echo-request accept
+        icmpv6 type { echo-request, nd-neighbor-solicit, nd-router-advert, nd-neighbor-advert } accept
         ip saddr ${sshAllowlist} tcp dport 22 accept
         ip saddr { ${lib.concatStringsSep ", " acmeAllowlist} } tcp dport 8443 accept
         # ACME HTTP-01 challenge: step-ca reaches back to each audit-plane

@@ -52,11 +52,12 @@
   networking = {
     domain = "samesies.gay";
     nftables.enable = true;
-    firewall = {
-      enable = true;
-      allowPing = true;
-      allowedTCPPorts = [ 22 ];
-    };
+    # Each host owns its complete ruleset via a declarative nftables inet table
+    # (e.g. mcp-audit-ingress, nats-ingress). nixos-fw (ip family) is disabled
+    # to avoid two independent firewalls at the same hook priority fighting each
+    # other — the ip-family table would shadow inet accepts silently.
+    # SSH (22), ICMP, and all service ports are expressed in the per-host table.
+    firewall.enable = false;
     useNetworkd = lib.mkDefault true;
   };
 

@@ -17,7 +17,7 @@
 
 let
   # Host-identity bindings. Plan 01-06 per-host rename target.
-  lxcIp = "10.0.2.13";
+  lxcIp = "10.0.120.23";
   # Hermes source address. Appears only in this let-binding — never in an
   # accept rule below. That absence IS the AUDIT-03 / D-11 invariant; Plan
   # 01-07's `assert-no-hermes-reach` flake-check greps the rendered ruleset
@@ -32,10 +32,10 @@ let
   # deliberately absent — D-11 one-way posture (hermes publishes OTel via the
   # Vector client on its OWN box; it never dials 4222 from the hermes LXC).
   auditPlaneAllowlist = [
-    "10.0.2.10"
-    "10.0.2.11"
-    "10.0.2.12"
-    "10.0.2.13"
+    "10.0.120.20"
+    "10.0.120.21"
+    "10.0.120.22"
+    "10.0.120.23"
   ];
   # Cluster port 6222 is peer-only. Self-filter so we never accept a route
   # from our own IP — that would be a misconfiguration, not a legitimate
@@ -179,7 +179,11 @@ in
     family = "inet";
     content = ''
       chain input {
-        type filter hook input priority 0;
+        type filter hook input priority filter; policy drop;
+        ct state established,related accept
+        iifname "lo" accept
+        icmp type echo-request accept
+        icmpv6 type { echo-request, nd-neighbor-solicit, nd-router-advert, nd-neighbor-advert } accept
         ip saddr { ${lib.concatStringsSep ", " auditPlaneAllowlist} } tcp dport 4222 accept
         ip saddr { ${lib.concatStringsSep ", " clusterPeerIps} } tcp dport 6222 accept
         ip saddr ${sshAllowlist} tcp dport 22 accept
@@ -199,9 +203,9 @@ in
   services.resolved.enable = true;
   services.resolved.domains = [ "samesies.gay" ];
   networking.extraHosts = ''
-    10.0.2.10 mcp-audit.samesies.gay ca.samesies.gay
-    10.0.2.11 mcp-nats01.samesies.gay
-    10.0.2.12 mcp-nats02.samesies.gay
-    10.0.2.13 mcp-nats03.samesies.gay
+    10.0.120.20 mcp-audit.samesies.gay ca.samesies.gay
+    10.0.120.21 mcp-nats01.samesies.gay
+    10.0.120.22 mcp-nats02.samesies.gay
+    10.0.120.23 mcp-nats03.samesies.gay
   '';
 }
