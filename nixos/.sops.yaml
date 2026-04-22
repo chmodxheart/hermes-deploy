@@ -1,6 +1,7 @@
 keys:
   - &evelyn age1pzn74xh6lknymmrv3hv39cs6zm7nefarx5pf8cgd5flnjsss847s6unxz2
-  - &hermes age14ytph87pl9p8metv8zedefmdyg25yvewm3fn7zydqzww2t72gdrqankp4p
+  - &restore age14glxq6n0dau23xvjk0044ywjlhu4y3plvfkd7rlqwnkfchw4f3wq6yjruk
+  - &hermes age1yl9d65xrwc8zhlfy7tfu5cyclzrl8qhqcgadrxjyxw9hhdn70uasy57p5t
   - &mcp-audit  age17h3e72mdug9qmdhhctsuhpxp3m9u3akkadqsvz7hvyzv849knahqpgnd5m
   - &mcp-nats01 age1yttk6cvd6rkc0amztmt9lemlv3e09mc2tfevwd9zr39hqyl4rulqnc5q2r
   - &mcp-nats02 age1ja75kpam44ren20l2p2rh7wpzrprxsj5pjypzjjeejcjn86g6daspg827n
@@ -11,20 +12,24 @@ creation_rules:
     key_groups:
       - age:
           - *evelyn
+          - *restore
   - path_regex: secrets/hermes\.ya?ml$
     key_groups:
       - age:
           - *evelyn
+          - *restore
           - *hermes
   - path_regex: secrets/mcp-audit\.ya?ml$
     key_groups:
       - age:
           - *evelyn
+          - *restore
           - *mcp-audit
   - path_regex: secrets/nats-operator\.ya?ml$
     key_groups:
       - age:
           - *evelyn
+          - *restore
           - *mcp-nats01
           - *mcp-nats02
           - *mcp-nats03
@@ -32,14 +37,17 @@ creation_rules:
     key_groups:
       - age:
           - *evelyn
+          - *restore
           - *mcp-nats01
   - path_regex: secrets/mcp-nats02\.ya?ml$
     key_groups:
       - age:
           - *evelyn
+          - *restore
           - *mcp-nats02
   - path_regex: secrets/mcp-nats03\.ya?ml$
     key_groups:
       - age:
           - *evelyn
+          - *restore
           - *mcp-nats03
