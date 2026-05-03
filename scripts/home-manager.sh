@@ -54,29 +54,17 @@ require_repo() {
 
 verify_target() {
   local target_name="${1:?target required}"
-  local flake_json
 
   require_command nix
   require_repo
 
-  flake_json="$(nix flake show --json "$HOME_MANAGER_REPO")"
-  FLAKE_JSON="$flake_json" python3 - "$target_name" <<'PY'
-import json
-import os
-import sys
-
-target = sys.argv[1]
-data = json.loads(os.environ["FLAKE_JSON"])
-home_configurations = data.get("homeConfigurations", {})
-children = home_configurations.get("children", {})
-
-if target in home_configurations or target in children:
-    sys.exit(0)
-
-print(f"error: Home Manager target not found: {target}", file=sys.stderr)
-print("       Expected homeConfigurations.<target> in HOME_MANAGER_REPO.", file=sys.stderr)
-sys.exit(1)
-PY
+  nix flake show --json "$HOME_MANAGER_REPO" >/dev/null
+  nix eval --raw "$HOME_MANAGER_REPO#homeConfigurations.\"$target_name\".activationPackage.drvPath" \
+    >/dev/null 2>&1 || {
+      echo "error: Home Manager target not found: $target_name" >&2
+      echo "       Expected homeConfigurations.<target> in HOME_MANAGER_REPO." >&2
+      exit 1
+    }
 }
 
 verify_secrets_boundary() {
