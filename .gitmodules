@@ -1,0 +1,3 @@
+[submodule "external/clustertool"]
+	path = external/clustertool
+	url = git@github.com:escidmore/clustertool.git
