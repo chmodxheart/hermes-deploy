@@ -1,12 +1,56 @@
-# hermes-deploy
+# homelab
 
-Top-level monorepo for the Proxmox LXC lab.
+Top-level operator repo for the homelab.
 
 This repo is the deployment system as a whole: Terraform provisions the
-Proxmox-side container envelope, NixOS converges the guest systems, and shared
-scripts/docs define the operator workflow across both.
+Proxmox-side container envelope, NixOS converges guest systems, Home Manager
+owns user environments, Kubernetes/Talos remains GitOps-managed, and shared
+scripts/docs define operator workflow across those boundaries.
 
-# Security architecture
+## Whole-homelab operator map
+
+| Work area | Current source | Canonical commands or workflow | Deeper docs |
+| --- | --- | --- | --- |
+| Proxmox LXC envelopes | `terraform/` | Run `terraform plan` and `terraform apply` from `terraform/`. | `terraform/README.md`, `docs/ownership-boundary.md` |
+| NixOS guest convergence | `nixos/` | Run `just check`, `just build <host>`, and `just deploy <host> <target>` from `nixos/`; use `terraform apply` for end-to-end LXC bring-up. | `nixos/README.md`, `nixos/docs/ops/README.md`, `nixos/docs/ops/deploy-pipeline.md` |
+| Home Manager user state | `~/repo/home-manager` | Run `./scripts/home-manager.sh verify wsl-desktop`, `./scripts/home-manager.sh build wsl-desktop`, and `./scripts/home-manager.sh switch wsl-desktop` from this repo. | `docs/home-manager.md`, `docs/ownership-boundary.md` |
+| Kubernetes/Talos resources | Current external Kubernetes/Talos source; planned in-repo representation is Phase 3 work. | Keep using Flux/Talos workflows for cluster-owned workloads; do not bypass Flux for resources that remain in Kubernetes. | `docs/ownership-boundary.md` |
+| Shared scripts | `scripts/` | Run shared operator scripts from the repo root as `./scripts/<name>.sh`. | `docs/README.md` |
+| Cross-cutting docs | `docs/` | Start at `docs/README.md`, then follow platform-specific links. | `docs/README.md` |
+
+## Guardrails
+
+- Do not commit decrypted secrets, Flux deploy keys, Talos secrets, Terraform
+  variables, private credentials, or generated credential material as tracked
+  plaintext.
+- Terraform owns Proxmox envelopes only. It must not grow guest-state
+  provisioners; the deploy bridge invokes the NixOS-owned bootstrap workflow.
+- Flux owns Kubernetes resources that remain in-cluster. Emergency manual
+  changes must be reconciled back through GitOps.
+- Home Manager owns user-level workstation state; this repo references it
+  through `scripts/home-manager.sh` and `docs/home-manager.md`.
+
+## Common workflow
+
+1. Build or refresh the NixOS Proxmox LXC template as documented in `docs/template-workflow.md`.
+2. Model or update host inventory in `terraform/locals.tf`.
+3. Add or update host definitions and SOPS-encrypted secrets in `nixos/`.
+4. Bootstrap per-host age identities from the repo root with `./scripts/add-host.sh <hostname>`.
+5. Run `terraform apply` from `terraform/` for end-to-end LXC bring-up.
+
+## Docs
+
+- `docs/README.md`: shared docs index.
+- `docs/home-manager.md`: referenced Home Manager source and wrapper workflow.
+- `docs/ownership-boundary.md`: whole-homelab ownership boundaries.
+- `docs/template-workflow.md`: supported template artifact flow.
+- `docs/nixos-handoff.md`: Terraform-to-NixOS host contract.
+- `terraform/README.md`: Terraform-side entrypoint.
+- `nixos/README.md`: NixOS subtree entrypoint.
+- `nixos/docs/ops/README.md`: NixOS operator runbook index.
+- `nixos/docs/ops/deploy-pipeline.md`: operator runbook for one-command deploys.
+
+## Security architecture
 
 Untrusted data is sanitized, processed by a quarantined LLM with no tools or
 credentials, and converted to typed structured data. The privileged agent
@@ -33,7 +77,7 @@ Credentials live outside the LLM context entirely. Everything is logged.
 **Design philosophy:** assume the model will be compromised, and make sure
 the worst outcome is bounded, reversible, and visible.
 
-# Research behind the design
+## Research behind the design
 
 Rough order of "if you only read one":
 
@@ -78,7 +122,7 @@ Rough order of "if you only read one":
 [johann]: https://simonwillison.net/2025/Aug/15/the-summer-of-johann/
 [browser]: https://www.anthropic.com/research/prompt-injection-defenses
 
-# Why NATS as the audit connector
+## Why NATS as the audit connector
 
 NATS isn't carrying audit data, it's **enforcing audit invariants**.
 Cryptographic identity, publish-only scope, and durable replay are security
@@ -106,33 +150,3 @@ properties of the transport itself, not features layered on top.
 - **Subject hierarchy = data classification for free** — `audit.otlp.*`,
   `audit.journal.*`, future `audit.security.*` get distinct retention,
   replication, and ACLs without separate transports.
-
-## Layout
-
-- `terraform/` provisions Proxmox containers.
-- `nixos/` defines guest operating system configuration.
-- `scripts/` holds shared operator workflows used across both areas.
-- `docs/` holds cross-cutting contract and workflow docs.
-
-## Canonical Paths
-
-- Run Terraform from `terraform/`.
-- Run NixOS flake commands from `nixos/`.
-- Run shared scripts from the repo root as `./scripts/<name>.sh`.
-
-## Common Workflow
-
-1. Build or refresh the NixOS Proxmox LXC template as documented in `docs/template-workflow.md`.
-2. Model or update host inventory in `terraform/locals.tf`.
-3. Add or update host definitions and secrets in `nixos/`.
-4. Bootstrap per-host age identities from the repo root with `./scripts/add-host.sh <hostname>`.
-5. Run `terraform apply` from `terraform/` for end-to-end bring-up.
-
-## Docs
-
-- `docs/README.md`: shared docs index.
-- `docs/ownership-boundary.md`: Terraform vs NixOS responsibilities.
-- `docs/template-workflow.md`: supported template artifact flow.
-- `docs/nixos-handoff.md`: Terraform-to-NixOS host contract.
-- `nixos/docs/ops/README.md`: NixOS operator runbook index.
-- `nixos/docs/ops/deploy-pipeline.md`: operator runbook for one-command deploys.
