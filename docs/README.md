@@ -11,6 +11,9 @@ Subtree-specific runbooks live under `../nixos/docs/ops/`.
 - `home-manager.md`: referenced Home Manager source, wrapper commands, machine onboarding, and SOPS/age boundary.
 - `kubernetes-talos.md`: referenced clustertool source, safe wrapper commands, Flux/Talos ownership, and Kubernetes SOPS boundary.
 - `service-inventory.md`: whole-homelab service catalog, inventory source-of-truth, and migration triage evidence.
+- `migration-pattern.md`: Kubernetes-to-LXC migration rubric/template and
+  implementation-ready `uptime-kuma` plan; clustertool/Flux still owns durable
+  Kubernetes cleanup.
 - `template-workflow.md`: the supported way to build and register the NixOS Proxmox LXC template.
 - `nixos-handoff.md`: the stable contract exported by Terraform and consumed by the NixOS side.
 - `end-state-data-flow.md`: planned runtime architecture and data-flow diagram for Hermes + audit-plane hosts.
@@ -22,7 +25,7 @@ Subtree-specific runbooks live under `../nixos/docs/ops/`.
 | Proxmox envelopes | `../terraform/` | Stays Terraform-owned. | `../terraform/README.md` |
 | NixOS guest state | `../nixos/` | Stays NixOS-owned. | `../nixos/README.md` |
 | Home Manager | `~/repo/home-manager` | Referenced from homelab through scripts/home-manager.sh and docs/home-manager.md. | `home-manager.md` |
-| Kubernetes/Talos | `../external/clustertool` | Referenced from homelab through docs/kubernetes-talos.md, scripts/kubernetes-talos.sh, and inventory/services.json. | `kubernetes-talos.md` |
+| Kubernetes/Talos | `../external/clustertool` | Referenced from homelab through docs/kubernetes-talos.md, scripts/kubernetes-talos.sh, inventory/services.json, and migration-pattern.md for target planning; durable Kubernetes cleanup remains clustertool/Flux-owned. | `kubernetes-talos.md`, `migration-pattern.md` |
 | Cross-cutting contracts | `../docs/` | Stays the repo-level contract layer. | `ownership-boundary.md` |
 
 ## Hard Guardrails
@@ -48,4 +51,5 @@ Subtree-specific runbooks live under `../nixos/docs/ops/`.
 4. Use `../nixos/docs/ops/README.md` to pick the right NixOS runbook.
 5. Use `../nixos/docs/ops/deploy-pipeline.md` for end-to-end host bring-up.
 6. Run `../scripts/kubernetes-talos.sh verify` and inspect `service-inventory.md` before Phase 4 migration planning.
-7. Use `../nixos/docs/ops/phase-01-verification.md` for live verification of the current audit-plane stack.
+7. Use `migration-pattern.md` for the migration rubric/template and the `uptime-kuma` implementation plan.
+8. Use `../nixos/docs/ops/phase-01-verification.md` for live verification of the current audit-plane stack.

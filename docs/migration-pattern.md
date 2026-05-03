@@ -225,6 +225,122 @@ low-risk service.
 | Health | `<source status>` | `<target endpoint/status>` | operator/NixOS |
 | Cleanup | `<Flux path>` | `<clustertool PR/task>` | clustertool/Flux |
 
+## Uptime Kuma First Migration Plan
+
+This plan maps the selected `uptime-kuma` Kubernetes source into a proposed
+Terraform and NixOS target. It does not execute the migration. The target values
+below are proposed operator-confirmation values because free VMID, IP, and MAC
+inventory is not encoded in repo docs. Confirm those values before implementation
+or Terraform apply.
+
+Implementation must pin any OCI image by digest if OCI is used.
+
+### Source Evidence
+
+| Source field | Evidence value | Owner / note |
+|---|---|---|
+| HelmRelease path | `external/clustertool/clusters/main/kubernetes/apps/uptime-kuma/app/helm-release.yaml` | clustertool / Flux owns the durable source manifest. |
+| Namespace / name | `uptime-kuma` / `uptime-kuma` | Source identity only; target hostname remains homelab-owned. |
+| Chart | `uptime-kuma` | Do not copy Helm state into homelab. |
+| Chart version | `14.1.1` | Source evidence for implementation planning. |
+| Ingress | `uptime.${DOMAIN_0}` | DNS/ingress owner remains authoritative. |
+| Ingress class | `internal` | Target must preserve internal-only exposure. |
+| Persistence | `config` | Maps to local LXC data storage. |
+| Backup | `VolSync/restic` | Restore evidence required before cutover. |
+| Snapshot | `uptime-kuma-config` | Source backup/snapshot evidence. |
+| Secret refs | `${VOLSYNC_WASABI_NAME}`, `${VOLSYNC_WASABI_ACCESSKEY}`, `${VOLSYNC_WASABI_BUCKET}`, `${VOLSYNC_WASABI_ENCRKEY}`, `${VOLSYNC_WASABI_PATH}`, `${VOLSYNC_WASABI_SECRETKEY}`, `${VOLSYNC_WASABI_URL}`, `${TZ}`, `${DOMAIN_0}`, `${CERTIFICATE_ISSUER}` | Variable names only; never decrypt or paste values into tracked docs. |
+
+### Target Proposal
+
+| Target field | Proposed value | Target owner / verification |
+|---|---|---|
+| Hostname | `uptime-kuma` | Homelab NixOS host identity. |
+| Terraform key | `"uptime-kuma"` | Add under `terraform/locals.tf` during implementation. |
+| VMID | `720` | Operator must confirm uniqueness. |
+| IPv4 | `10.0.120.30/24` | Operator must confirm availability. |
+| Gateway | `10.0.120.1` | Matches existing VLAN 1200 LXC pattern. |
+| MAC | `BC:24:11:AD:00:30` | Operator must confirm uniqueness. |
+| Node | `pm01` | Operator must confirm placement capacity. |
+| VLAN | `1200` | Existing LXC network envelope. |
+| Bridge | `vmbr1` | Existing LXC network bridge. |
+| Rootfs datastore | `ceph-rbd` | Existing Terraform LXC pattern. |
+| Rootfs size | `20GiB` | Proposed app/data disk envelope. |
+| CPU | `1` | Proposed low-duty-cycle service allocation. |
+| Memory | `1024MiB` | Proposed first target memory envelope. |
+| Tags | `["migration", "uptime-kuma"]` | Identifies service and migration context. |
+| NixOS host path | `nixos/hosts/uptime-kuma/default.nix` | Add during implementation. |
+| NixOS module path | `nixos/modules/uptime-kuma.nix` | Add during implementation if service module is used. |
+| Service port | `3001` | Open only through the intended internal path. |
+| Data path | `/var/lib/uptime-kuma:/app/data` | Restore local app data here before startup/cutover. |
+
+Target implementation should map `terraform/locals.tf` to the Proxmox envelope,
+`nixos/flake.nix` to `nixosConfigurations.uptime-kuma`,
+`nixos/hosts/uptime-kuma/default.nix` to host identity/firewall/storage, and
+`nixos/modules/uptime-kuma.nix` to service convergence. Terraform must not push
+guest configuration; NixOS must own the service, firewall, filesystem, and SOPS
+references.
+
+### Implementation Task Map
+
+| Task area | Owner | Implementation work | Verification / gate |
+|---|---|---|---|
+| Source verification | homelab read-only | Run `./scripts/kubernetes-talos.sh verify` against the pinned clustertool source and confirm the HelmRelease evidence remains recoverable. | Static checks pass; live checks may skip when context is unavailable. |
+| Terraform envelope | homelab Terraform | Add `"uptime-kuma"` to `terraform/locals.tf` with the proposed node, VMID, IPv4, gateway, MAC, VLAN, bridge, rootfs, CPU, memory, tags, and key-file shape. | `terraform -chdir=terraform validate` passes after implementation. |
+| NixOS flake entry | homelab NixOS | Add `nixosConfigurations.uptime-kuma` to `nixos/flake.nix` using the existing `mkHost` + `./profiles/lxc.nix` pattern. | `nix build ./nixos#nixosConfigurations.uptime-kuma.config.system.build.toplevel` passes. |
+| Host config | homelab NixOS | Create `nixos/hosts/uptime-kuma/default.nix` for host identity, local storage, firewall, and encrypted secret references by name only. | Host config evaluates and exposes only intended SSH/service paths. |
+| Service module | homelab NixOS | Create `nixos/modules/uptime-kuma.nix` or equivalent host-local service config with local `/var/lib/uptime-kuma` data and port `3001`. Pin any OCI image by digest if OCI is used. | Service starts and `curl -fsS http://10.0.120.30:3001/` succeeds after deployment. |
+| Inventory/docs | homelab docs/inventory | Update `inventory/services.json`, `docs/service-inventory.md`, and related docs only after target state is implemented or status changes. | `python3 scripts/validate-inventory.py inventory/services.json` passes. |
+| DNS/ingress cutover | external DNS/ingress owner | Repoint `uptime.${DOMAIN_0}` from Kubernetes internal ingress to the verified LXC/reverse-proxy path. | DNS/ingress confirmation for `uptime.${DOMAIN_0}` after target health passes. |
+| Flux cleanup | clustertool / Flux | Perform any HelmRelease suspend, resume, delete, or durable cleanup only from clustertool after LXC verification. | Cleanup is delayed until rollback window and source recoverability requirements are satisfied. |
+
+### Cutover Verification Gate
+
+Do not change DNS/ingress until all applicable checks are complete:
+
+```bash
+terraform -chdir=terraform validate
+nix build ./nixos#nixosConfigurations.uptime-kuma.config.system.build.toplevel
+python3 scripts/validate-inventory.py inventory/services.json
+./scripts/kubernetes-talos.sh verify
+curl -fsS http://10.0.120.30:3001/
+```
+
+Additional required evidence:
+
+- DNS/ingress confirmation for `uptime.${DOMAIN_0}` after the external owner
+  points traffic to the LXC/reverse-proxy path.
+- Backup/restore evidence for `/var/lib/uptime-kuma`, including source,
+  timestamp, and proof that restored data is usable before service cutover.
+- UI login/monitor list check proving auth and critical monitor definitions
+  survived the restore.
+
+### Monitoring Plan
+
+Use existing checks before adding new monitoring systems:
+
+- Source-side monitoring remains Flux HelmRelease status and any existing cluster
+  Prometheus scrape while the Kubernetes source is recoverable.
+- Target-side baseline is host logs from journald or container logs plus direct
+  HTTP health on `http://10.0.120.30:3001/`.
+- If existing Prometheus scrape paths cover LXC exporters, use the existing host
+  exporter path and keep any carve-out narrow. If not, document manual checks for
+  the first migration instead of creating a new monitoring platform.
+- The final cutover gate must include the manual UI login/monitor list check even
+  when logs or exporters are healthy.
+
+### Rollback Plan
+
+1. Keep the Kubernetes HelmRelease recoverable until LXC target health, restore
+   evidence, UI login, monitor list, and DNS/ingress checks pass.
+2. If cutover fails, stop or isolate the LXC target service without deleting
+   `/var/lib/uptime-kuma` evidence.
+3. Ask the DNS/ingress owner to repoint `uptime.${DOMAIN_0}` back to Kubernetes
+   internal ingress.
+   Required rollback wording: repoint `uptime.${DOMAIN_0}` back to Kubernetes internal ingress.
+4. Perform any Flux suspend/resume/delete only from clustertool; homelab must not
+   mutate durable Kubernetes resources directly.
+5. Verify the Kubernetes UI and monitor list before retrying the LXC cutover.
+
 ## Parallel-Build Cutover Sequence
 
 1. Score and select the service using the weighted evidence rubric.
