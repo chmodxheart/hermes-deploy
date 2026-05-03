@@ -1,0 +1,3257 @@
+{
+  "schema_version": "1.0.0",
+  "generated_from": [
+    {
+      "path": "external/clustertool",
+      "owner": "clustertool",
+      "purpose": "Kubernetes/Talos GitOps source"
+    },
+    {
+      "path": "nixos/flake.nix",
+      "owner": "homelab:nixos",
+      "purpose": "NixOS host and service composition"
+    },
+    {
+      "path": "terraform/locals.tf",
+      "owner": "homelab:terraform",
+      "purpose": "Proxmox LXC envelopes"
+    }
+  ],
+  "hosts": [
+    {
+      "id": "hermes",
+      "platform": "nixos-lxc",
+      "source_path": "nixos/flake.nix#nixosConfigurations.hermes",
+      "owner": "homelab:nixos",
+      "role": "hermes-agent host",
+      "terraform": "pre-existing outside terraform/locals.tf inventory"
+    },
+    {
+      "id": "mcp-audit",
+      "platform": "proxmox-lxc+nixos",
+      "source_path": "terraform/locals.tf#mcp-audit; nixos/flake.nix#mcp-audit",
+      "owner": "homelab:terraform+nixos",
+      "role": "audit plane sink",
+      "vmid": 705,
+      "ipv4": "10.0.120.20/24",
+      "resources": {
+        "cpu_cores": 6,
+        "memory_mib": 12288,
+        "rootfs_size_gib": 200
+      }
+    },
+    {
+      "id": "mcp-nats01",
+      "platform": "proxmox-lxc+nixos",
+      "source_path": "terraform/locals.tf#mcp-nats01; nixos/flake.nix#mcp-nats01",
+      "owner": "homelab:terraform+nixos",
+      "role": "NATS JetStream audit-plane node",
+      "vmid": 711,
+      "ipv4": "10.0.120.21/24",
+      "resources": {
+        "cpu_cores": 2,
+        "memory_mib": 4096,
+        "rootfs_size_gib": 30
+      }
+    },
+    {
+      "id": "mcp-nats02",
+      "platform": "proxmox-lxc+nixos",
+      "source_path": "terraform/locals.tf#mcp-nats02; nixos/flake.nix#mcp-nats02",
+      "owner": "homelab:terraform+nixos",
+      "role": "NATS JetStream audit-plane node",
+      "vmid": 712,
+      "ipv4": "10.0.120.22/24",
+      "resources": {
+        "cpu_cores": 2,
+        "memory_mib": 4096,
+        "rootfs_size_gib": 30
+      }
+    },
+    {
+      "id": "mcp-nats03",
+      "platform": "proxmox-lxc+nixos",
+      "source_path": "terraform/locals.tf#mcp-nats03; nixos/flake.nix#mcp-nats03",
+      "owner": "homelab:terraform+nixos",
+      "role": "NATS JetStream audit-plane node",
+      "vmid": 713,
+      "ipv4": "10.0.120.23/24",
+      "resources": {
+        "cpu_cores": 2,
+        "memory_mib": 4096,
+        "rootfs_size_gib": 30
+      }
+    },
+    {
+      "id": "talos-control-plane-group",
+      "platform": "talos-kubernetes",
+      "source_path": "external/clustertool/clusters/main/talos/generated/talsecret.yaml",
+      "owner": "clustertool:talos",
+      "role": "talos control plane group",
+      "notes": "Host group represented from available generated Talos source files; individual machine configs are not committed in this pinned source."
+    },
+    {
+      "id": "talos-worker-group",
+      "platform": "talos-kubernetes",
+      "source_path": "external/clustertool/clusters/main/talos/generated/talsecret.yaml",
+      "owner": "clustertool:talos",
+      "role": "talos worker group",
+      "notes": "Host group represented from available generated Talos source files; individual machine configs are not committed in this pinned source."
+    }
+  ],
+  "services": [
+    {
+      "id": "actualserver",
+      "name": "actualserver",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/actualserver/app/helm-release.yaml",
+      "namespace": "actualserver",
+      "ingress_dns": [
+        "actual.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "1000m",
+          "memory": "6500Mi",
+          "limits": {
+            "cpu": "1000m",
+            "memory": "1024Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "candidate",
+        "rationale": "Large declared memory request versus lower limit and simple internal ingress make this a Phase 4 migration candidate.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/actualserver/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "audiobookshelf",
+      "name": "audiobookshelf",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/audiobookshelf/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "abs.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "8000m",
+          "memory": "250Mi",
+          "limits": {
+            "cpu": "8000m",
+            "memory": "2048Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/audiobookshelf/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "authentik",
+      "name": "authentik",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/authentik/app/helm-release.yaml",
+      "namespace": "authentik",
+      "ingress_dns": [
+        "auth.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume",
+        "CNPG PostgreSQL"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}",
+        "encrypted clusterenv reference ${CNPG_DB_PASSWORD}",
+        "encrypted clusterenv reference ${EMAIL_SMTP_PASSWORD}"
+      ],
+      "backups": [
+        "VolSync/restic",
+        "CNPG backups"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS",
+        "CNPG"
+      ],
+      "ports": [
+        "port: ${EMAIL_SMTP_PORT}"
+      ],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "500m",
+          "memory": "1024Mi",
+          "limits": {
+            "memory": "1024Mi",
+            "accessKey": "${VOLSYNC_WASABI_ACCESSKEY}"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/authentik/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "bazarr",
+      "name": "bazarr",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/bazarr/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "bazarr.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "1000m",
+          "memory": "600Mi",
+          "limits": {
+            "cpu": "1000m",
+            "memory": "1500Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/bazarr/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "blocky",
+      "name": "blocky",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/core/blocky/app/helm-release.yaml",
+      "namespace": "blocky",
+      "ingress_dns": [],
+      "storage": [
+        "CNPG PostgreSQL"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "CNPG"
+      ],
+      "ports": [
+        "port: \"{{ .Values.service.dns.ports.dns.port }}\"",
+        "port: 4443",
+        "port: 53",
+        "port: 853",
+        "targetPort: 4443",
+        "targetPort: 53",
+        "targetPort: 853"
+      ],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "cpu": "2000m",
+          "memory": "300Mi",
+          "limits": {
+            "cpu": "2000m",
+            "memory": "500Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/core/blocky/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "calibre",
+      "name": "calibre",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/calibre/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "calibre.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "4",
+          "memory": "900Mi",
+          "limits": {
+            "cpu": "4",
+            "memory": "4096Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/calibre/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "cert-manager",
+      "name": "cert-manager",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/cert-manager/app/helm-release.yaml",
+      "namespace": "cert-manager",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/cert-manager/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "cilium",
+      "name": "cilium",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/kube-system/cilium/app/helm-release.yaml",
+      "namespace": "kube-system",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/kube-system/cilium/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "cloudflared",
+      "name": "cloudflared",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/networking/cloudflared/app/helm-release.yaml",
+      "namespace": "networking",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "limits": {
+            "cpu": "50m",
+            "memory": "512Mi"
+          },
+          "cpu": "50m",
+          "memory": "50Mi"
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/networking/cloudflared/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "cloudflareddns",
+      "name": "cloudflareddns",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/cloudflareddns/app/helm-release.yaml",
+      "namespace": "cloudflareddns",
+      "ingress_dns": [],
+      "storage": [
+        "VolSync/restic-backed persistence"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "limits": {
+            "cpu": "30m",
+            "memory": "256Mi"
+          },
+          "cpu": "30m",
+          "memory": "30Mi"
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/cloudflareddns/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "cloudnative-pg",
+      "name": "cloudnative-pg",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/cloudnative-pg/app/helm-release.yaml",
+      "namespace": "cloudnative-pg",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/cloudnative-pg/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "clusterissuer",
+      "name": "clusterissuer",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/core/clusterissuer/app/helm-release.yaml",
+      "namespace": "clusterissuer",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/core/clusterissuer/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "descheduler",
+      "name": "descheduler",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/kube-system/descheduler/app/helm-release.yaml",
+      "namespace": "kube-system",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "cpu": "500m",
+          "memory": "50Mi",
+          "limits": {
+            "cpu": "500m",
+            "memory": "256Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/kube-system/descheduler/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "ghostfolio",
+      "name": "ghostfolio",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/ghostfolio/app/helm-release.yaml",
+      "namespace": "ghostfolio",
+      "ingress_dns": [
+        "ghost.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "CNPG PostgreSQL"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}",
+        "encrypted clusterenv reference ${CNPG_DB_PASSWORD}"
+      ],
+      "backups": [
+        "VolSync/restic",
+        "CNPG backups"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "CNPG"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "500m",
+          "memory": "250Mi",
+          "limits": {
+            "cpu": "500m",
+            "memory": "768Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/ghostfolio/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "grafana",
+      "name": "grafana",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/monitoring/grafana/app/helm-release.yaml",
+      "namespace": "grafana",
+      "ingress_dns": [
+        "grafana.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "CNPG PostgreSQL"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "CNPG"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "cpu": "500m",
+          "memory": "150Mi",
+          "limits": {
+            "cpu": "500m",
+            "memory": "1024Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/monitoring/grafana/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "home-assistant",
+      "name": "home-assistant",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/home-assistant/app/helm-release.yaml",
+      "namespace": "home-assistant",
+      "ingress_dns": [
+        "ha.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "CNPG PostgreSQL"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${CNPG_DB_PASSWORD}"
+      ],
+      "backups": [
+        "VolSync/restic",
+        "CNPG backups"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "CNPG"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "2000m",
+          "memory": "500Mi",
+          "limits": {
+            "cpu": "2000m",
+            "memory": "2048Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/home-assistant/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "immich",
+      "name": "immich",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/immich/app/helm-release.yaml",
+      "namespace": "immich",
+      "ingress_dns": [
+        "immich.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "CNPG PostgreSQL"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}",
+        "encrypted clusterenv reference ${CNPG_DB_PASSWORD}"
+      ],
+      "backups": [
+        "VolSync/restic",
+        "CNPG backups"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "CNPG"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "6000m",
+          "memory": "4096Mi",
+          "limits": {
+            "memory": "4096Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/immich/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "jellyseerr",
+      "name": "jellyseerr",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/jellyseerr/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "jellyseerr.${DOMAIN_0}",
+        "overseer.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/jellyseerr/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "kavita",
+      "name": "kavita",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/kavita/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "kavita.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "1000m",
+          "memory": "450Mi",
+          "limits": {
+            "cpu": "1000m",
+            "memory": "1024Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "maybe",
+        "rationale": "App is LXC-shaped, but the NFS media dependency and config restore need explicit cutover evidence.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/kavita/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "kopia",
+      "name": "kopia",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/kopia/app/helm-release.yaml",
+      "namespace": "kopia",
+      "ingress_dns": [
+        "kopia.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}",
+        "encrypted clusterenv reference ${KOPIA_PASS}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [
+        "port: 51515",
+        "targetPort: 51515"
+      ],
+      "criticality": "stateful-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "stay",
+        "rationale": "Backup service exposes LoadBalancer/gRPC and owns NFS backup paths; keep in Kubernetes until backup ownership is redesigned.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/kopia/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "kube-prometheus-stack",
+      "name": "kube-prometheus-stack",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/kube-prometheus-stack/app/helm-release.yaml",
+      "namespace": "kube-prometheus-stack",
+      "ingress_dns": [],
+      "storage": [
+        "Kubernetes persistence declared"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "cpu": "4000m",
+          "memory": "2048Mi",
+          "limits": {
+            "cpu": "4000m",
+            "memory": "3000Mi"
+          },
+          "storage": "100Gi",
+          "fullnameOverride": "node-exporter"
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/kube-prometheus-stack/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "kubelet-csr-approver",
+      "name": "kubelet-csr-approver",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/kube-system/kubelet-csr-approver/app/helm-release.yaml",
+      "namespace": "kube-system",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "cpu": "100m",
+          "memory": "80Mi"
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/kube-system/kubelet-csr-approver/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "kubernetes-dashboard",
+      "name": "kubernetes-dashboard",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/kubernetes-dashboard/app/helm-release.yaml",
+      "namespace": "kubernetes-dashboard",
+      "ingress_dns": [
+        "kube-dash.${DOMAIN_0}"
+      ],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [
+        "port: 80",
+        "targetPort: 80"
+      ],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "150m",
+          "memory": "32Mi",
+          "limits": {
+            "cpu": "150m",
+            "memory": "256Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/kubernetes-dashboard/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "kubernetes-reflector",
+      "name": "kubernetes-reflector",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/kubernetes-reflector/app/helm-release.yaml",
+      "namespace": "snapshot-controller",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/kubernetes-reflector/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "kyverno",
+      "name": "kyverno",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/kyverno/app/helm-release.yaml",
+      "namespace": "kyverno",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/kyverno/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "metallb",
+      "name": "metallb",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/metallb/app/helm-release.yaml",
+      "namespace": "metallb",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/metallb/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "metallb-config",
+      "name": "metallb-config",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/core/metallb-config/app/helm-release.yaml",
+      "namespace": "metallb-config",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/core/metallb-config/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "metrics-server",
+      "name": "metrics-server",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/kube-system/metrics-server/app/helm-release.yaml",
+      "namespace": "kube-system",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/kube-system/metrics-server/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "minio",
+      "name": "minio",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/minio/app/helm-release.yaml",
+      "namespace": "minio",
+      "ingress_dns": [
+        "minio.${DOMAIN_0}",
+        "s3.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}",
+        "encrypted clusterenv reference ${MINIO_PASS}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "stateful-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "blocked",
+        "rationale": "Object-storage and persistent data role blocks opportunistic migration without a storage-specific plan.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/minio/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "nginx-external",
+      "name": "nginx-external",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/networking/nginx-external/app/helm-release.yaml",
+      "namespace": "nginx-external",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "cpu": "100m",
+          "memory": "1Gi",
+          "limits": {
+            "memory": "1Gi",
+            "enabled": "false"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/networking/nginx-external/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "nginx-internal",
+      "name": "nginx-internal",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/networking/nginx-internal/app/helm-release.yaml",
+      "namespace": "nginx-internal",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "cpu": "100m",
+          "memory": "2Gi",
+          "limits": {
+            "memory": "2Gi",
+            "enabled": "false"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/networking/nginx-internal/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "node-feature-discovery",
+      "name": "node-feature-discovery",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/kube-system/node-feature-discovery/app/helm-release.yaml",
+      "namespace": "kube-system",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/kube-system/node-feature-discovery/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "nzbget",
+      "name": "nzbget",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/nzbget/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "nzbget.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "limits": {
+            "cpu": "50m",
+            "memory": "2048Mi"
+          },
+          "cpu": "50m",
+          "memory": "50Mi"
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/nzbget/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "odoo",
+      "name": "odoo",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/odoo/app/helm-release.yaml",
+      "namespace": "odoo",
+      "ingress_dns": [
+        "odoo.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "CNPG PostgreSQL"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}",
+        "encrypted clusterenv reference ${CNPG_DB_PASSWORD}"
+      ],
+      "backups": [
+        "VolSync/restic",
+        "CNPG backups"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "CNPG"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/odoo/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "openebs",
+      "name": "openebs",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/openebs/app/helm-release.yaml",
+      "namespace": "openebs",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/openebs/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "openwebui",
+      "name": "openwebui",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/openwebui/app/helm-release.yaml",
+      "namespace": "openwebui",
+      "ingress_dns": [
+        "owu.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "CNPG PostgreSQL"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}",
+        "encrypted clusterenv reference ${CNPG_DB_PASSWORD}"
+      ],
+      "backups": [
+        "VolSync/restic",
+        "CNPG backups"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "CNPG"
+      ],
+      "ports": [
+        "port: 8080",
+        "targetPort: 8080"
+      ],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "memory": "6144Mi",
+          "cpu": "250m",
+          "limits": {
+            "memory": "6144Mi",
+            "cpu": "6000m"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/openwebui/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "overseerr",
+      "name": "overseerr",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/overseerr/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "overseerr.${DOMAIN_0}",
+        "overseer.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "1000m",
+          "memory": "256Mi",
+          "limits": {
+            "cpu": "1000m",
+            "memory": "512Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/overseerr/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "pasta",
+      "name": "pasta",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/pasta/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "pasta.${DOMAIN_0}"
+      ],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "limits": {
+            "cpu": "50m",
+            "memory": "512Mi"
+          },
+          "cpu": "50m",
+          "memory": "50Mi"
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/pasta/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "pgadmin",
+      "name": "pgadmin",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/pgadmin/app/helm-release.yaml",
+      "namespace": "pgadmin",
+      "ingress_dns": [
+        "pgadmin.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "1000m",
+          "memory": "250Mi",
+          "limits": {
+            "cpu": "1000m",
+            "memory": "1024Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/pgadmin/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "prowlarr",
+      "name": "prowlarr",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/prowlarr/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "prowlarr.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "1000m",
+          "memory": "50Mi",
+          "limits": {
+            "cpu": "1000m",
+            "memory": "128Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/prowlarr/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "qbittorrent",
+      "name": "qbittorrent",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/qbittorrent/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "qbit.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [
+        "port: '{{ .Values.service.torrent.ports.torrent.port }}'",
+        "port: 38383"
+      ],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "6000m",
+          "memory": "256Mi",
+          "limits": {
+            "memory": "256Mi",
+            "truecharts.org/tun": "1",
+            "FIREWALL": "'on'"
+          },
+          "truecharts.org/tun": "1"
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/qbittorrent/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "radarr",
+      "name": "radarr",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/radarr/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "radarr.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "1000m",
+          "memory": "256Mi",
+          "limits": {
+            "cpu": "1000m",
+            "memory": "1500Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/radarr/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "recyclarr",
+      "name": "recyclarr",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/recyclarr/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "1000m",
+          "memory": "150Mi",
+          "limits": {
+            "cpu": "1000m",
+            "memory": "1Gi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/recyclarr/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "reloader",
+      "name": "reloader",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/reloader/app/helm-release.yaml",
+      "namespace": "system",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/reloader/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "rook-ceph",
+      "name": "rook-ceph",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/rook-ceph/app/helm-release.yaml",
+      "namespace": "rook-ceph",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "cpu": "50m",
+          "memory": "256Mi",
+          "limits": {
+            "memory": "256Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/rook-ceph/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "snapshot-controller",
+      "name": "snapshot-controller",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/snapshot-controller/app/helm-release.yaml",
+      "namespace": "system",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/snapshot-controller/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "sonarr",
+      "name": "sonarr",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/sonarr/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "sonarr.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "1000m",
+          "memory": "450Mi",
+          "limits": {
+            "cpu": "1000m",
+            "memory": "2048Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/sonarr/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "spegel",
+      "name": "spegel",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/spegel/app/helm-release.yaml",
+      "namespace": "spegel",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/spegel/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "spoolman",
+      "name": "spoolman",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/spoolman/app/helm-release.yaml",
+      "namespace": "spoolman",
+      "ingress_dns": [
+        "spoolman.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "CNPG PostgreSQL"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}",
+        "encrypted clusterenv reference ${CNPG_DB_PASSWORD}"
+      ],
+      "backups": [
+        "VolSync/restic",
+        "CNPG backups"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "CNPG"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/spoolman/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "synadia",
+      "name": "synadia",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/synadia/app/helm-release.yaml",
+      "namespace": "synadia",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/synadia/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "syncthing",
+      "name": "syncthing",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/syncthing/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "sync.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [
+        "port: 21027",
+        "port: 22000",
+        "targetPort: 21027",
+        "targetPort: 22000"
+      ],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "1000m",
+          "memory": "300Mi",
+          "limits": {
+            "cpu": "1000m",
+            "memory": "1024Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/syncthing/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "system-upgrade-controller",
+      "name": "system-upgrade-controller",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/system-upgrade-controller/app/helm-release.yaml",
+      "namespace": "system-upgrade",
+      "ingress_dns": [],
+      "storage": [
+        "Kubernetes persistence declared"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/system-upgrade-controller/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "tailscale-nk",
+      "name": "tailscale-nk",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/networking/tailscale-nk/app/helm-release.yaml",
+      "namespace": "networking",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/networking/tailscale-nk/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "tautulli",
+      "name": "tautulli",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/tautulli/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "tautulli.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "1000m",
+          "memory": "200Mi",
+          "limits": {
+            "cpu": "1000m",
+            "memory": "500Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/tautulli/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "tdarr",
+      "name": "tdarr",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/media/tdarr/app/helm-release.yaml",
+      "namespace": "media",
+      "ingress_dns": [
+        "tdarr.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "NFS-backed volume"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "NFS"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "12000m",
+          "memory": "1Gi",
+          "limits": {
+            "cpu": "12000m",
+            "memory": "4Gi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/media/tdarr/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "unbound",
+      "name": "unbound",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/networking/unbound/app/helm-release.yaml",
+      "namespace": "networking",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "cpu": "1000m",
+          "memory": "27Mi",
+          "limits": {
+            "cpu": "1000m",
+            "memory": "256Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/networking/unbound/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "uptime-kuma",
+      "name": "uptime-kuma",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/uptime-kuma/app/helm-release.yaml",
+      "namespace": "uptime-kuma",
+      "ingress_dns": [
+        "uptime.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "candidate",
+        "rationale": "Low-duty-cycle monitoring UI with internal ingress and restic-backed config is a good LXC candidate.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/uptime-kuma/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "vaultwarden",
+      "name": "vaultwarden",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/vaultwarden/app/helm-release.yaml",
+      "namespace": "vaultwarden",
+      "ingress_dns": [
+        "vw.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "CNPG PostgreSQL"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}",
+        "encrypted clusterenv reference ${CNPG_DB_PASSWORD}",
+        "encrypted clusterenv reference ${EMAIL_SMTP_PASSWORD}"
+      ],
+      "backups": [
+        "VolSync/restic",
+        "CNPG backups"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "CNPG"
+      ],
+      "ports": [
+        "port: ${EMAIL_SMTP_PORT}"
+      ],
+      "criticality": "stateful-critical",
+      "resource_context": {
+        "requested": {
+          "cpu": "100m",
+          "memory": "30Mi",
+          "limits": {
+            "cpu": "500m",
+            "memory": "1024Mi"
+          }
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "maybe",
+        "rationale": "Useful service but CNPG, email, push, and secret-heavy state require a careful migration design.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/vaultwarden/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "vikunja",
+      "name": "vikunja",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/vikunja/app/helm-release.yaml",
+      "namespace": "vikunja",
+      "ingress_dns": [
+        "vikunja.${DOMAIN_0}"
+      ],
+      "storage": [
+        "VolSync/restic-backed persistence",
+        "CNPG PostgreSQL"
+      ],
+      "secrets": [
+        "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}",
+        "encrypted clusterenv reference ${CNPG_DB_PASSWORD}",
+        "encrypted clusterenv reference ${EMAIL_SMTP_PASSWORD}"
+      ],
+      "backups": [
+        "VolSync/restic",
+        "CNPG backups"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes",
+        "CNPG"
+      ],
+      "ports": [
+        "port: ${EMAIL_SMTP_PORT}"
+      ],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/vikunja/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "vlmcsd-kms-server",
+      "name": "vlmcsd-kms-server",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/vlmcsd-kms-server/app/helm-release.yaml",
+      "namespace": "vlmcsd-kms-server",
+      "ingress_dns": [],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "limits": {
+            "cpu": "50m",
+            "memory": "512Mi"
+          },
+          "cpu": "50m",
+          "memory": "50Mi"
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/vlmcsd-kms-server/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "volsync",
+      "name": "volsync",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/system/volsync/app/helm-release.yaml",
+      "namespace": "volsync",
+      "ingress_dns": [],
+      "storage": [
+        "VolSync/restic-backed persistence"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "VolSync/restic"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "platform-critical",
+      "resource_context": {
+        "requested": {
+          "notes": "No explicit pod resources in pinned HelmRelease."
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/system/volsync/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "webnut",
+      "name": "webnut",
+      "platform": "kubernetes",
+      "owner": "clustertool:flux",
+      "source_path": "external/clustertool/clusters/main/kubernetes/apps/webnut/app/helm-release.yaml",
+      "namespace": "webnut",
+      "ingress_dns": [
+        "webnut.${DOMAIN_0}"
+      ],
+      "storage": [
+        "none declared in HelmRelease"
+      ],
+      "secrets": [
+        "none obvious in HelmRelease; check encrypted clusterenv before changes"
+      ],
+      "backups": [
+        "unknown from HelmRelease"
+      ],
+      "monitoring": [
+        "Flux HelmRelease status",
+        "cluster Prometheus if scraped"
+      ],
+      "dependencies": [
+        "Flux",
+        "Talos Kubernetes"
+      ],
+      "ports": [],
+      "criticality": "service",
+      "resource_context": {
+        "requested": {
+          "cpu": "100m",
+          "memory": "100Mi"
+        },
+        "observed": "unknown",
+        "notes": "Observed live resource metrics were not collected; do not infer utilization from requests alone."
+      },
+      "migration": {
+        "triage": "unknown",
+        "rationale": "No Phase 3 migration evidence reviewed beyond manifest presence; triage deferred.",
+        "evidence": [
+          "external/clustertool/clusters/main/kubernetes/apps/webnut/app/helm-release.yaml"
+        ]
+      },
+      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+    },
+    {
+      "id": "hermes-agent",
+      "name": "Hermes Agent",
+      "platform": "nixos-lxc",
+      "owner": "homelab:nixos",
+      "source_path": "nixos/hosts/hermes/default.nix",
+      "namespace": "n/a",
+      "ingress_dns": [],
+      "storage": [
+        "NixOS host state",
+        "sops-managed secrets"
+      ],
+      "secrets": [
+        "nixos/secrets/hermes.yaml encrypted with SOPS"
+      ],
+      "backups": [
+        "Proxmox/NixOS host backup policy"
+      ],
+      "monitoring": [
+        "Vector audit client when enabled",
+        "host logs"
+      ],
+      "dependencies": [
+        "NixOS flake",
+        "Hermes agent upstream module"
+      ],
+      "ports": [],
+      "criticality": "core-agent",
+      "resource_context": {
+        "requested": {
+          "host": "hermes"
+        },
+        "observed": "unknown",
+        "notes": "Existing LXC service; no live metrics collected."
+      },
+      "migration": {
+        "triage": "stay",
+        "rationale": "Already placed on LXC/NixOS; not a Kubernetes-to-LXC migration candidate."
+      },
+      "notes": "Continuity requirement: keep existing Hermes workflow working."
+    },
+    {
+      "id": "mcp-audit-langfuse",
+      "name": "MCP audit Langfuse sink",
+      "platform": "nixos-lxc",
+      "owner": "homelab:nixos",
+      "source_path": "nixos/modules/mcp-audit.nix; nixos/hosts/mcp-audit/default.nix",
+      "namespace": "n/a",
+      "ingress_dns": [],
+      "storage": [
+        "PostgreSQL",
+        "ClickHouse",
+        "Redis",
+        "OCI container volumes"
+      ],
+      "secrets": [
+        "nixos/secrets/mcp-audit.yaml encrypted with SOPS"
+      ],
+      "backups": [
+        "PBS exclude baseline and host backup policy"
+      ],
+      "monitoring": [
+        "Vector audit client",
+        "host logs",
+        "Prometheus exporters"
+      ],
+      "dependencies": [
+        "mcp-nats",
+        "step-ca",
+        "sops-nix"
+      ],
+      "ports": [
+        "3000",
+        "4318"
+      ],
+      "criticality": "audit-plane",
+      "resource_context": {
+        "requested": {
+          "cpu_cores": 6,
+          "memory_mib": 12288
+        },
+        "observed": "unknown",
+        "notes": "Terraform LXC envelope records requested host resources."
+      },
+      "migration": {
+        "triage": "stay",
+        "rationale": "Already an LXC service and required for the audit plane continuity path."
+      },
+      "notes": "Do not expose Hermes ingress into the audit plane."
+    },
+    {
+      "id": "mcp-nats",
+      "name": "MCP NATS cluster",
+      "platform": "nixos-lxc",
+      "owner": "homelab:nixos",
+      "source_path": "nixos/modules/nats-cluster.nix; nixos/hosts/mcp-nats*/default.nix",
+      "namespace": "n/a",
+      "ingress_dns": [],
+      "storage": [
+        "JetStream state on mcp-nats LXC hosts"
+      ],
+      "secrets": [
+        "nixos/secrets/mcp-nats01.yaml",
+        "nixos/secrets/mcp-nats02.yaml",
+        "nixos/secrets/mcp-nats03.yaml"
+      ],
+      "backups": [
+        "Proxmox/NixOS host backup policy"
+      ],
+      "monitoring": [
+        "Prometheus exporters",
+        "journald audit publishing"
+      ],
+      "dependencies": [
+        "step-ca certificates",
+        "sops-nix"
+      ],
+      "ports": [
+        "4222",
+        "6222",
+        "8222"
+      ],
+      "criticality": "audit-plane",
+      "resource_context": {
+        "requested": {
+          "cpu_cores_each": 2,
+          "memory_mib_each": 4096
+        },
+        "observed": "unknown",
+        "notes": "Terraform LXC envelope records requested host resources."
+      },
+      "migration": {
+        "triage": "stay",
+        "rationale": "Already an LXC audit-plane service and not part of Kubernetes migration triage."
+      },
+      "notes": "Terraform owns LXC envelope; NixOS owns service convergence."
+    }
+  ]
+}
