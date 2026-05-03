@@ -15,6 +15,9 @@ SERVICE_KEYS = set(
     "id name platform owner source_path namespace ingress_dns storage secrets backups "
     "monitoring dependencies ports criticality resource_context migration notes".split()
 )
+RESOURCE_KEYS = set("cpu memory storage cpu_cores memory_mib cpu_cores_each host limits".split())
+RESOURCE_KEYS.add("memory_mib_each")
+LIMIT_KEYS = set("cpu memory storage".split())
 
 def fail(message):
     print(f"error: {message}")
@@ -36,10 +39,34 @@ def validate_object(value, path, required=None, exact=False):
         return None
     return require_keys(value, required, path, exact)
 
+def validate_resource_object(value, path, allowed_keys):
+    error = validate_object(value, path)
+    if error:
+        return error
+    extra = sorted(set(value) - allowed_keys)
+    if extra:
+        return f"{path} has non-resource keys: {', '.join(extra)}"
+    return None
+
 def validate_resource_context(service, path):
-    return validate_object(
-        service["resource_context"], f"{path}.resource_context", {"requested", "observed", "notes"}
+    error = validate_object(
+        service["resource_context"],
+        f"{path}.resource_context",
+        {"requested", "observed", "notes"},
     )
+    if error:
+        return error
+    requested = service["resource_context"]["requested"]
+    requested_path = f"{path}.resource_context.requested"
+    error = validate_resource_object(requested, requested_path, RESOURCE_KEYS)
+    if error:
+        return error
+    if "limits" not in requested:
+        return None
+    return validate_resource_object(
+        requested["limits"], f"{requested_path}.limits", LIMIT_KEYS
+    )
+
 
 def validate_migration(service, path):
     migration = service["migration"]
