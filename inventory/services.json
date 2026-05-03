@@ -131,7 +131,7 @@
       "criticality": "service",
       "resource_context": {
         "requested": {
-          "cpu": "1000m",
+          "cpu": "100m",
           "memory": "6500Mi",
           "limits": {
             "cpu": "1000m",
@@ -1031,7 +1031,7 @@
       "criticality": "service",
       "resource_context": {
         "requested": {
-          "cpu": "1000m",
+          "cpu": "100m",
           "memory": "450Mi",
           "limits": {
             "cpu": "1000m",
