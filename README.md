@@ -14,7 +14,7 @@ scripts/docs define operator workflow across those boundaries.
 | Proxmox LXC envelopes | `terraform/` | Run `terraform plan` and `terraform apply` from `terraform/`. | `terraform/README.md`, `docs/ownership-boundary.md` |
 | NixOS guest convergence | `nixos/` | Run `just check`, `just build <host>`, and `just deploy <host> <target>` from `nixos/`; use `terraform apply` for end-to-end LXC bring-up. | `nixos/README.md`, `nixos/docs/ops/README.md`, `nixos/docs/ops/deploy-pipeline.md` |
 | Home Manager user state | `~/repo/home-manager` | Run `./scripts/home-manager.sh verify wsl-desktop`, `./scripts/home-manager.sh build wsl-desktop`, and `./scripts/home-manager.sh switch wsl-desktop` from this repo. | `docs/home-manager.md`, `docs/ownership-boundary.md` |
-| Kubernetes/Talos resources | Current external Kubernetes/Talos source; planned in-repo representation is Phase 3 work. | Keep using Flux/Talos workflows for cluster-owned workloads; do not bypass Flux for resources that remain in Kubernetes. | `docs/ownership-boundary.md` |
+| Kubernetes/Talos resources | `external/clustertool` (pinned submodule of clustertool) | Run `./scripts/kubernetes-talos.sh verify` for safe static checks and read-only Flux/Talos checks when tools and context are available; make durable Kubernetes Git/Flux changes in clustertool for resources that remain in-cluster. | `docs/kubernetes-talos.md`, `docs/service-inventory.md`, `docs/ownership-boundary.md` |
 | Shared scripts | `scripts/` | Run shared operator scripts from the repo root as `./scripts/<name>.sh`. | `docs/README.md` |
 | Cross-cutting docs | `docs/` | Start at `docs/README.md`, then follow platform-specific links. | `docs/README.md` |
 
@@ -42,6 +42,8 @@ scripts/docs define operator workflow across those boundaries.
 
 - `docs/README.md`: shared docs index.
 - `docs/home-manager.md`: referenced Home Manager source and wrapper workflow.
+- `docs/kubernetes-talos.md`: referenced clustertool source, safe wrapper workflow, Flux/Talos ownership, and secret boundary.
+- `docs/service-inventory.md`: whole-homelab service catalog and Kubernetes-to-LXC migration evidence.
 - `docs/ownership-boundary.md`: whole-homelab ownership boundaries.
 - `docs/template-workflow.md`: supported template artifact flow.
 - `docs/nixos-handoff.md`: Terraform-to-NixOS host contract.
