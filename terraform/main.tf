@@ -32,6 +32,13 @@ module "lxc_container" {
   ssh_authorized_key_files = try(each.value.ssh_authorized_key_files, [])
 }
 
+locals {
+  nixos_deploy_containers = {
+    for name, container in local.containers : name => container
+    if try(container.nixos_deploy_enabled, true)
+  }
+}
+
 # ------------------------------------------------------------------------------
 # NixOS deploy step. Relaxes the ownership boundary documented in
 # ../docs/ownership-boundary.md so `terraform apply` is the single operator
@@ -40,10 +47,10 @@ module "lxc_container" {
 # `nixos-rebuild switch --target-host`. Idempotent — re-applies are safe.
 # ------------------------------------------------------------------------------
 
-variable "hermes_repo_path" {
-  description = "Absolute path to the hermes-deploy repo root (holds scripts/ and nixos/)."
+variable "homelab_repo_path" {
+  description = "Absolute path to the homelab repo root (holds scripts/ and nixos/)."
   type        = string
-  default     = "/home/eve/repo/hermes-deploy"
+  default     = "/home/eve/repo/homelab"
 }
 
 variable "nixos_deploy_enabled" {
@@ -53,7 +60,7 @@ variable "nixos_deploy_enabled" {
 }
 
 resource "null_resource" "nixos_deploy" {
-  for_each = var.nixos_deploy_enabled ? local.containers : {}
+  for_each = var.nixos_deploy_enabled ? local.nixos_deploy_containers : {}
 
   depends_on = [module.lxc_container]
 
@@ -68,8 +75,8 @@ resource "null_resource" "nixos_deploy" {
   }
 
   provisioner "local-exec" {
-    command     = "${var.hermes_repo_path}/scripts/bootstrap-host.sh ${each.key}"
-    working_dir = var.hermes_repo_path
+    command     = "${var.homelab_repo_path}/scripts/bootstrap-host.sh ${each.key}"
+    working_dir = var.homelab_repo_path
     environment = {
       MCP_DOMAIN = "samesies.gay"
     }

@@ -76,6 +76,7 @@ locals {
       vlan_id                  = 2100
       bridge                   = "vmbr1"
       nixos_role               = "uptime-kuma"
+      nixos_deploy_enabled     = false # nixos_deploy_enabled  = false
       rootfs_datastore         = "ceph-rbd"
       rootfs_size_gib          = 20
       cpu_cores                = 1
