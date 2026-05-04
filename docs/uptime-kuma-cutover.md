@@ -203,6 +203,30 @@ Cleanup handoff requirements:
 Until those requirements pass, keep the Kubernetes HelmRelease and Flux path
 recoverable.
 
+## Evidence Log
+
+Checkpoint outcome: `approved-cutover` at 2026-05-04T14:51:14Z.
+
+The operator-approved checkpoint response confirms these secret-free live facts:
+
+- Restore or seed from `uptime-kuma-config` to `/var/lib/uptime-kuma` was
+  completed and verified without recording backup, SOPS, age, Flux, Talos,
+  Terraform, DNS, or application credential values.
+- Allowed-source access from `10.0.1.2` to `http://10.2.100.30:3001/` passed.
+- Host service health and logs for `uptime-kuma` were validated with no reported
+  restore, data-directory, or port-binding failures.
+- Denied WSL-source access from `10.0.1.9` to tcp/3001 failed as intended.
+- The Uptime Kuma UI login and expected monitor list were validated by the
+  operator without recording credentials or sensitive monitor details.
+- External DNS/ingress routing for `uptime.${DOMAIN_0}` was confirmed to reach
+  the LXC target or intended reverse-proxy path.
+- Rollback readiness was confirmed: the LXC service can be stopped or isolated
+  without deleting `/var/lib/uptime-kuma`, and traffic can be repointed back to
+  Kubernetes internal ingress if the rollback window fails.
+
+Kubernetes source remains recoverable until the rollback window is satisfied;
+durable suspend/delete cleanup remains clustertool/Flux-owned.
+
 ## Evidence Log Template
 
 Copy one row per gate. Keep summaries secret-free.
