@@ -13,4 +13,11 @@ in
     assert !contains "networking.firewall.allowedTCPPorts";
     assert !contains "virtualisation.oci-containers";
     true;
+
+  task2PhaseInvariants =
+    assert contains ''toString cfg.dataDir == "/var/lib/uptime-kuma"'';
+    assert contains "cfg.port == 3001";
+    assert contains "@sha256:";
+    assert contains "NFS";
+    true;
 }
