@@ -68,15 +68,16 @@ locals {
       ssh_authorized_key_files = [pathexpand("~/.ssh/id_ed25519.pub")]
     }
     "uptime-kuma" = {
-      node                     = "pm01"
-      vmid                     = 2130
-      ipv4                     = "10.2.100.30/24"
-      gateway                  = "10.2.100.1"
-      mac_address              = "BC:24:11:AD:21:30"
-      vlan_id                  = 2100
-      bridge                   = "vmbr1"
-      nixos_role               = "uptime-kuma"
-      nixos_deploy_enabled     = false # nixos_deploy_enabled  = false
+      node        = "pm01"
+      vmid        = 2130
+      ipv4        = "10.2.100.30/24"
+      gateway     = "10.2.100.1"
+      mac_address = "BC:24:11:AD:21:30"
+      vlan_id     = 2100
+      bridge      = "vmbr1"
+      nixos_role  = "uptime-kuma"
+      # D-02: nixos_deploy_enabled  = false keeps Phase 6 envelope-only.
+      nixos_deploy_enabled     = false
       rootfs_datastore         = "ceph-rbd"
       rootfs_size_gib          = 20
       cpu_cores                = 1
