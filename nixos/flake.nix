@@ -93,6 +93,13 @@
             ./hosts/mcp-audit/vector-client.nix
           ];
         };
+        uptime-kuma = mkHost {
+          hostName = "uptime-kuma";
+          modules = [
+            ./profiles/lxc.nix
+            ./hosts/uptime-kuma
+          ];
+        };
 
         # Phase-1 target: mcp-audit without Vector client. Used by
         # bootstrap-cluster.sh before the NATS cluster exists. Switch to
