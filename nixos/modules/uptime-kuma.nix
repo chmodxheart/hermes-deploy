@@ -15,6 +15,10 @@ in
   options.services.homelabUptimeKuma = {
     enable = lib.mkEnableOption "homelab Uptime Kuma service";
 
+    # D-03 selects the native upstream NixOS module, so this wrapper exposes no
+    # image option. Any future OCI fallback must use an @sha256: digest-pinned
+    # image per D-13/NIX-03 instead of a mutable tag-only reference.
+
     dataDir = lib.mkOption {
       type = lib.types.path;
       default = /var/lib/uptime-kuma;
@@ -34,6 +38,22 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = toString cfg.dataDir == "/var/lib/uptime-kuma";
+        message = ''
+          Phase 7 requires local /var/lib/uptime-kuma app data and forbids NFS
+          or alternate app data paths per D-07.
+        '';
+      }
+      {
+        assertion = cfg.port == 3001;
+        message = ''
+          Phase 7 requires Uptime Kuma port 3001 per D-10 and D-15.
+        '';
+      }
+    ];
+
     services.uptime-kuma = {
       enable = true;
       settings = {
