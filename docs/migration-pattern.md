@@ -233,6 +233,9 @@ below are proposed operator-confirmation values because free VMID, IP, and MAC
 inventory is not encoded in repo docs. Confirm those values before implementation
 or Terraform apply.
 
+The older VLAN 1200 proposal was superseded by Phase 5; existing audit-plane
+VLAN 1200 allocations remain grandfathered.
+
 Implementation must pin any OCI image by digest if OCI is used.
 
 ### Source Evidence
@@ -256,12 +259,12 @@ Implementation must pin any OCI image by digest if OCI is used.
 |---|---|---|
 | Hostname | `uptime-kuma` | Homelab NixOS host identity. |
 | Terraform key | `"uptime-kuma"` | Add under `terraform/locals.tf` during implementation. |
-| VMID | `720` | Operator must confirm uniqueness. |
-| IPv4 | `10.0.120.30/24` | Operator must confirm availability. |
-| Gateway | `10.0.120.1` | Matches existing VLAN 1200 LXC pattern. |
-| MAC | `BC:24:11:AD:00:30` | Operator must confirm uniqueness. |
+| VMID | `2130` | Operator must confirm uniqueness. |
+| IPv4 | `10.2.100.30/24` | Operator must confirm availability. |
+| Gateway | `10.2.100.1` | Matches the Monitoring UI VLAN target. |
+| MAC | `BC:24:11:AD:21:30` | Operator must confirm uniqueness. |
 | Node | `pm01` | Operator must confirm placement capacity. |
-| VLAN | `1200` | Existing LXC network envelope. |
+| VLAN | `2100` | Monitoring UI VLAN from docs/allocation-policy.md. |
 | Bridge | `vmbr1` | Existing LXC network bridge. |
 | Rootfs datastore | `ceph-rbd` | Existing Terraform LXC pattern. |
 | Rootfs size | `20GiB` | Proposed app/data disk envelope. |
@@ -288,7 +291,7 @@ references.
 | Terraform envelope | homelab Terraform | Add `"uptime-kuma"` to `terraform/locals.tf` with the proposed node, VMID, IPv4, gateway, MAC, VLAN, bridge, rootfs, CPU, memory, tags, and key-file shape. | `terraform -chdir=terraform validate` passes after implementation. |
 | NixOS flake entry | homelab NixOS | Add `nixosConfigurations.uptime-kuma` to `nixos/flake.nix` using the existing `mkHost` + `./profiles/lxc.nix` pattern. | `nix build ./nixos#nixosConfigurations.uptime-kuma.config.system.build.toplevel` passes. |
 | Host config | homelab NixOS | Create `nixos/hosts/uptime-kuma/default.nix` for host identity, local storage, firewall, and encrypted secret references by name only. | Host config evaluates and exposes only intended SSH/service paths. |
-| Service module | homelab NixOS | Create `nixos/modules/uptime-kuma.nix` or equivalent host-local service config with local `/var/lib/uptime-kuma` data and port `3001`. Pin any OCI image by digest if OCI is used. | Service starts and `curl -fsS http://10.0.120.30:3001/` succeeds after deployment. |
+| Service module | homelab NixOS | Create `nixos/modules/uptime-kuma.nix` or equivalent host-local service config with local `/var/lib/uptime-kuma` data and port `3001`. Pin any OCI image by digest if OCI is used. | Service starts and `curl -fsS http://10.2.100.30:3001/` succeeds after deployment. |
 | Inventory/docs | homelab docs/inventory | Update `inventory/services.json`, `docs/service-inventory.md`, and related docs only after target state is implemented or status changes. | `python3 scripts/validate-inventory.py inventory/services.json` passes. |
 | DNS/ingress cutover | external DNS/ingress owner | Repoint `uptime.${DOMAIN_0}` from Kubernetes internal ingress to the verified LXC/reverse-proxy path. | DNS/ingress confirmation for `uptime.${DOMAIN_0}` after target health passes. |
 | Flux cleanup | clustertool / Flux | Perform any HelmRelease suspend, resume, delete, or durable cleanup only from clustertool after LXC verification. | Cleanup is delayed until rollback window and source recoverability requirements are satisfied. |
@@ -302,7 +305,7 @@ terraform -chdir=terraform validate
 nix build ./nixos#nixosConfigurations.uptime-kuma.config.system.build.toplevel
 python3 scripts/validate-inventory.py inventory/services.json
 ./scripts/kubernetes-talos.sh verify
-curl -fsS http://10.0.120.30:3001/
+curl -fsS http://10.2.100.30:3001/
 ```
 
 Additional required evidence:
@@ -321,7 +324,7 @@ Use existing checks before adding new monitoring systems:
 - Source-side monitoring remains Flux HelmRelease status and any existing cluster
   Prometheus scrape while the Kubernetes source is recoverable.
 - Target-side baseline is host logs from journald or container logs plus direct
-  HTTP health on `http://10.0.120.30:3001/`.
+  HTTP health on `http://10.2.100.30:3001/`.
 - If existing Prometheus scrape paths cover LXC exporters, use the existing host
   exporter path and keep any carve-out narrow. If not, document manual checks for
   the first migration instead of creating a new monitoring platform.
