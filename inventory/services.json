@@ -125,26 +125,21 @@
         "actual.${DOMAIN_0}"
       ],
       "storage": [
-        "VolSync/restic-backed Kubernetes persistence",
-        "target LXC local data path /var/lib/uptime-kuma after restore evidence"
+        "VolSync/restic-backed Kubernetes persistence"
       ],
       "secrets": [
         "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
       ],
       "backups": [
-        "VolSync/restic source remains recoverable",
-        "target LXC host backup remains gated until restore evidence and rollback readiness"
+        "VolSync/restic source remains recoverable"
       ],
       "monitoring": [
         "Flux HelmRelease status",
-        "cluster Prometheus if scraped",
-        "target journald status and http://10.2.100.30:3001/ health after deployment"
+        "cluster Prometheus if scraped"
       ],
       "dependencies": [
         "Flux",
-        "Talos Kubernetes",
-        "proxmox-lxc+nixos target uptime-kuma at 10.2.100.30",
-        "docs/uptime-kuma-cutover.md restore, DNS/ingress, rollback, and cleanup gates"
+        "Talos Kubernetes"
       ],
       "ports": [],
       "criticality": "service",
