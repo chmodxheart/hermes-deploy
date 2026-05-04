@@ -67,5 +67,21 @@ locals {
       tags                     = ["audit-plane", "nats"]
       ssh_authorized_key_files = [pathexpand("~/.ssh/id_ed25519.pub")]
     }
+    "uptime-kuma" = {
+      node                     = "pm01"
+      vmid                     = 2130
+      ipv4                     = "10.2.100.30/24"
+      gateway                  = "10.2.100.1"
+      mac_address              = "BC:24:11:AD:21:30"
+      vlan_id                  = 2100
+      bridge                   = "vmbr1"
+      nixos_role               = "uptime-kuma"
+      rootfs_datastore         = "ceph-rbd"
+      rootfs_size_gib          = 20
+      cpu_cores                = 1
+      memory_mib               = 1024
+      tags                     = ["migration", "uptime-kuma"]
+      ssh_authorized_key_files = [pathexpand("~/.ssh/id_ed25519.pub")]
+    }
   }
 }
