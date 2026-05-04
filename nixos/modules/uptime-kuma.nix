@@ -57,9 +57,9 @@ in
     services.uptime-kuma = {
       enable = true;
       settings = {
-        DATA_DIR = toString cfg.dataDir;
-        HOST = "0.0.0.0";
-        PORT = toString cfg.port;
+        DATA_DIR = lib.mkForce (toString cfg.dataDir);
+        HOST = lib.mkForce "0.0.0.0";
+        PORT = lib.mkForce (toString cfg.port);
       };
     };
   };
