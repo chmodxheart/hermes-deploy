@@ -87,3 +87,52 @@ Live Proxmox and network checks should be performed where credentials and safe
 read-only context are available. If live Proxmox checks are unavailable during
 planning or implementation, the missing evidence is a Phase 6 pre-apply gate, not
 permission to treat the allocation as live-confirmed.
+
+## Uptime Kuma Source Baseline
+
+| Source fact | Baseline evidence | Owner / guardrail |
+|---|---|---|
+| Source path | `external/clustertool/clusters/main/kubernetes/apps/uptime-kuma/app/helm-release.yaml` | `clustertool / Flux` owns the durable manifest. |
+| Namespace / name | `uptime-kuma` / `uptime-kuma` | Source identity only; target host identity remains homelab-owned. |
+| Chart / version | `uptime-kuma` / `14.1.1` | Source evidence for Phase 6 and Phase 7 implementation planning. |
+| Ingress host | `uptime.${DOMAIN_0}` | DNS/ingress owner remains external and authoritative. |
+| Ingress class | `internal` | Target planning assumes internal-only exposure. |
+| Persistence | `config` | Maps to local LXC app data during later restore work. |
+| Restore source | VolSync/restic snapshot `uptime-kuma-config` | Restore dry-run proof is required before cutover treats the source as proven. |
+| Read-only verification command | `./scripts/kubernetes-talos.sh verify` | Static and live checks are read-only (D-11). |
+
+Secret references are names-only and must never be decrypted or pasted into docs
+(D-12). The Uptime Kuma source references `${VOLSYNC_WASABI_NAME}`,
+`${VOLSYNC_WASABI_ACCESSKEY}`, `${VOLSYNC_WASABI_BUCKET}`,
+`${VOLSYNC_WASABI_ENCRKEY}`, `${VOLSYNC_WASABI_PATH}`,
+`${VOLSYNC_WASABI_SECRETKEY}`, `${VOLSYNC_WASABI_URL}`, `${TZ}`,
+`${DOMAIN_0}`, and `${CERTIFICATE_ISSUER}`.
+
+2026-05-04 baseline result: static clustertool checks passed,
+`flux-system/uptime-kuma` was ready at `main@sha1:9fa8193d`,
+`uptime-kuma/uptime-kuma` HelmRelease was ready with chart
+`uptime-kuma@14.1.1`, and all Kubernetes nodes reported ready. Record source
+baseline evidence as checklist-style paths, commands, and facts rather than full
+command-output logs (D-20). Unrelated live cluster issues for other releases do
+not block Uptime Kuma target planning.
+
+Restore-source readiness requires a dry-run restore before cutover planning treats
+the source as proven (D-13). Missing restore dry-run proof is a Phase 8 cutover
+blocker, not a Phase 6 or Phase 7 implementation planning blocker (D-14). These
+facts are recorded here so Phase 6, Phase 7, and Phase 8 planners can consume
+durable baseline evidence without re-asking for the source path or secret names
+(D-21).
+
+## DNS And Cutover Ownership
+
+External DNS/ingress owners remain authoritative for `uptime.${DOMAIN_0}`; this
+repo records the target baseline and gate but does not own the external control
+plane (D-15). Until later source verification proves another owner-specific path,
+target planning assumes direct LXC DNS for the access path (D-16).
+
+`uptime.${DOMAIN_0}` must not be repointed until Phase 8 confirms all cutover
+evidence: HTTP health, service logs, UI login, monitor list, restore
+evidence/dry-run, rollback path, and explicit rollback window (D-17, D-18).
+The missing restore dry-run proof remains a Phase 8 cutover blocker, not a Phase
+6 or Phase 7 planning blocker (D-14). This keeps downstream planning durable
+without overstating source recoverability (D-21).
