@@ -30,12 +30,17 @@ Before cutover work starts, confirm and record:
    `2130`, IP `10.2.100.30/24`, and `nixos_deploy_enabled = false`.
 2. The Terraform envelope has been reviewed or applied by the Terraform owner.
 3. The NixOS target still builds from `nixosConfigurations.uptime-kuma`.
-4. The source path exists and remains clustertool/Flux-owned:
+4. The host age-key bootstrap source exists before guest convergence. If
+   `nixos/.sops.yaml` does not contain `&uptime-kuma` or
+   `nixos/secrets/host-sops-keys.yaml` does not contain an encrypted
+   `uptime-kuma: entry`, run `./scripts/add-host.sh uptime-kuma` from the repo
+   root before `./scripts/bootstrap-host.sh uptime-kuma`.
+5. The source path exists and remains clustertool/Flux-owned:
    `external/clustertool/clusters/main/kubernetes/apps/uptime-kuma/app/helm-release.yaml`.
-5. The restore source name is `uptime-kuma-config`; no decrypted backup values are
+6. The restore source name is `uptime-kuma-config`; no decrypted backup values are
    copied into homelab files.
-6. The allowed HTTP source is `10.0.1.2`; the negative source is `10.0.1.9`.
-7. The operator has a rollback window approved before durable Kubernetes cleanup
+7. The allowed HTTP source is `10.0.1.2`; the negative source is `10.0.1.9`.
+8. The operator has a rollback window approved before durable Kubernetes cleanup
    is requested.
 
 Recommended static checks before a live attempt:
@@ -57,18 +62,33 @@ change that flag in this runbook sequence.
 
 1. From the repo root, have the Terraform owner provision or update the Proxmox
    LXC envelope for host `uptime-kuma`.
-2. After the target is reachable over SSH and the host age key is available,
+2. Verify the host age-key prerequisite. If `nixos/.sops.yaml` does not contain
+   `&uptime-kuma` or `nixos/secrets/host-sops-keys.yaml` does not contain an
+   encrypted `uptime-kuma: entry`, run the bootstrap identity command first:
+
+   ```bash
+   ./scripts/add-host.sh uptime-kuma
+   ```
+
+   Record only the command name, timestamp, actor/source, result, and a
+   secret-free summary. Do not record SOPS, age, backup, DNS, app credential,
+   Flux, Talos, or Terraform variable values.
+
+3. After the target is reachable over SSH and the host age key is available,
    converge the NixOS guest explicitly:
 
    ```bash
    ./scripts/bootstrap-host.sh uptime-kuma
    ```
 
-3. Record the convergence evidence: command, timestamp, actor/source, result,
+4. Record the convergence evidence: command, timestamp, actor/source, result,
    and any secret-free summary.
-4. Do not treat successful convergence as cutover readiness until restore,
+5. Do not treat successful convergence as cutover readiness until restore,
    target verification, UI login, monitor list, rollback, and DNS/ingress gates
    below all pass.
+
+The `nixos_deploy_enabled = false` flag keeps Terraform from taking over guest
+convergence; do not silently change that flag as part of this prerequisite fix.
 
 ## Restore Or Seed Data
 

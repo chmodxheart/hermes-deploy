@@ -30,7 +30,7 @@ side).
 One-time — rerun only on NixOS channel bumps.
 
 ```fish
-cd ~/repo/hermes-deploy/nixos
+cd ~/repo/homelab/nixos
 nixos-rebuild build-image \
   --image-variant proxmox-lxc \
   --flake .#mcp-audit   # any audit-plane host works as the template source
@@ -83,7 +83,7 @@ audit-plane host. Replace the placeholder `lab-nixos-01` entry with
 Apply:
 
 ```fish
-cd ~/repo/hermes-deploy/terraform
+cd ~/repo/homelab/terraform
 # terraform.tfvars must have the Proxmox endpoint, API token, and
 # template_file_id from 0.1 — see terraform.tfvars.example.
 terraform init
@@ -115,7 +115,7 @@ Sanity check: `getent hosts mcp-audit.samesies.gay` returns `10.0.2.10`.
 `deploy-pipeline.md` for the full flow. Run once per host:
 
 ```fish
-cd ~/repo/hermes-deploy
+cd ~/repo/homelab
 ./scripts/add-host.sh mcp-audit
 ./scripts/add-host.sh mcp-nats01
 ./scripts/add-host.sh mcp-nats02
@@ -149,7 +149,7 @@ handles LXC creation + sops key push + `nixos-rebuild switch` end-to-end
 per host via `scripts/bootstrap-host.sh`.
 
 ```fish
-cd ~/repo/hermes-deploy/terraform
+cd ~/repo/homelab/terraform
 terraform apply
 ```
 

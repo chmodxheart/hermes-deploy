@@ -6,6 +6,7 @@ keys:
   - &mcp-nats01 age1yttk6cvd6rkc0amztmt9lemlv3e09mc2tfevwd9zr39hqyl4rulqnc5q2r
   - &mcp-nats02 age1ja75kpam44ren20l2p2rh7wpzrprxsj5pjypzjjeejcjn86g6daspg827n
   - &mcp-nats03 age18xa8hvjnrjufyvanw69g7hf029gzkzj5ey0lm5f8p7ejr3qcjq4q9unt0m
+  - &uptime-kuma age1myv5arqup0kh07v8pvwu49l4x88px30ftnk8347kr3kvugqlpyvq99ddhd
 
 creation_rules:
   - path_regex: secrets/host-sops-keys\.ya?ml$
@@ -51,3 +52,8 @@ creation_rules:
           - *evelyn
           - *restore
           - *mcp-nats03
+  - path_regex: secrets/uptime-kuma\.ya?ml$
+    key_groups:
+      - age:
+          - *evelyn
+          - *uptime-kuma

@@ -13,24 +13,24 @@
 - Samba AD DC admin (`samba-tool dns add` from a DC).
 - `sops`, `age`, `ssh-to-age`, `nsc` on the operator workstation
   (`nix shell nixpkgs#{sops,age,ssh-to-age,nsc}`).
-- The repo cloned locally; branch is Phase-1 (`gsd/phase-01-audit-substrate`).
+- The repo cloned locally.
 
-## 1. Create the three Proxmox LXCs
+## 1. Declare the three Proxmox LXCs in Terraform
 
-For `hostName ∈ {mcp-nats01, mcp-nats02, mcp-nats03}`:
+Terraform owns Proxmox envelopes. For `mcp-nats01`, `mcp-nats02`, and
+`mcp-nats03`, declare or update the container inventory in
+`terraform/locals.tf`, then run Terraform from the Terraform subtree:
 
-```bash
-# On any Proxmox node.
-pct create <vmid> \
-  local:vztmpl/nixos-25.11-proxmox-lxc.tar.xz \
-  --hostname mcp-nats-N \
-  --net0 name=eth0,bridge=vmbr0,hwaddr=<NEW_MAC>,ip=dhcp \
-  --cores 2 --memory 2048 --rootfs local-lvm:32 \
-  --unprivileged 1 --features nesting=1
+```fish
+cd <homelab-repo>/terraform
+terraform plan
+terraform apply
 ```
 
-Target VMIDs: 2011 / 2012 / 2013. Record the `hwaddr` — you'll pin
-it on the Mikrotik in step 2.
+For the supported end-to-end deploy flow, see
+[`deploy-pipeline.md`](deploy-pipeline.md). Do not create these containers with
+manual `pct create` commands unless you are doing an explicitly documented
+recovery outside normal repo ownership.
 
 ## 2. Pin DHCP on the Mikrotik
 
@@ -62,22 +62,23 @@ done
 
 Verify from an audit-plane host: `getent hosts mcp-nats01.samesies.gay`.
 
-## 4. Publish each host's age pubkey into `.sops.yaml`
+## 4. Publish each host age identity into `.sops.yaml`
 
-Each LXC boots with an ed25519 host key. Convert it to an age pubkey:
+Use the repo bootstrap helper from the repo root. It generates a dedicated host
+age identity, stores the private key encrypted in
+`nixos/secrets/host-sops-keys.yaml`, publishes the public recipient in
+`nixos/.sops.yaml`, and re-keys the host secret file when present:
 
-```bash
-ssh root@mcp-nats01.samesies.gay cat /etc/ssh/ssh_host_ed25519_key.pub \
-  | ssh-to-age
+```fish
+cd <homelab-repo>
+./scripts/add-host.sh mcp-nats01
+./scripts/add-host.sh mcp-nats02
+./scripts/add-host.sh mcp-nats03
 ```
 
-Paste the resulting `age1...` into `.sops.yaml` under `keys:` and
-add the host to the `creation_rules` for
-`secrets/mcp-nats01.yaml` (and, for node 1 only, the operator file).
-
-Commit the `.sops.yaml` change on a branch. Run
-`sops updatekeys secrets/mcp-nats-*.yaml secrets/nats-operator.yaml`
-to re-encrypt existing entries for the new recipient.
+Manual `.sops.yaml` edits are reserved for documented recovery or recipient
+rotation. The normal path must leave `scripts/bootstrap-host.sh` able to deliver
+the encrypted per-host private key during deploy.
 
 ## 5. One-time `nsc` operator bootstrap (node 1 only)
 
@@ -97,7 +98,7 @@ nsc add user --account AUDIT --name vector-mcp-nats03 \
 nsc add user --account AUDIT --name langfuse-ingest --allow-sub 'audit.otlp.>'
 nsc add user --account AUDIT --name admin
 
-# Export the creds you'll paste into the repo secrets.
+# Export temporary creds for SOPS-encrypted repo secrets or local ignored stores.
 nsc generate creds --account AUDIT --name vector-mcp-nats01 \
   > vector-mcp-nats01.creds
 nsc generate creds --account AUDIT --name vector-mcp-nats02 \
@@ -109,6 +110,14 @@ nsc generate creds --account AUDIT --name langfuse-ingest \
 nsc generate creds --account AUDIT --name admin \
   > nats-admin.creds
 ```
+
+The generated `.creds`, JWTs, PEMs, passwords, and environment values are
+temporary local material. They may enter only SOPS-encrypted
+`nixos/secrets/*.yaml` files or local ignored stores such as `~/.nsc`. Plaintext
+generated credential files must not be committed. Follow the two-stage SOPS
+pattern from [`new-lxc-checklist.md`](new-lxc-checklist.md): placeholders may be
+tracked only as examples or encrypted files, then real values are populated and
+encrypted before tracking.
 
 ## 6. Generate and encrypt the bootstrap secret files
 
@@ -134,7 +143,7 @@ Use the dry run first to confirm which `nsc` users will be created or reused
 and which encrypted files would be replaced, without modifying the local
 `~/.nsc` store or the repo secrets.
 
-Commit the encrypted files once they look correct.
+Commit the SOPS-encrypted files once they look correct.
 
 ## 7. Uncomment the system-account public-key line
 

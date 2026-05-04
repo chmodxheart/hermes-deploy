@@ -60,7 +60,7 @@ plus any host-specific imports, and register it under
 **3.** Bootstrap the sops age identity:
 
 ```fish
-cd ~/repo/hermes-deploy
+cd <homelab-repo>
 ./scripts/add-host.sh mcp-whatever
 ```
 
@@ -73,12 +73,14 @@ it exists.
 populate real values and encrypt:
 
 ```fish
+cd <homelab-repo>/nixos
 sops -e -i secrets/mcp-whatever.yaml
 ```
 
 **5.** Commit:
 
 ```fish
+cd <homelab-repo>/nixos
 git add .sops.yaml secrets/host-sops-keys.yaml secrets/mcp-whatever.yaml flake.nix hosts/mcp-whatever
 git commit -m "feat: bootstrap mcp-whatever"
 ```
@@ -88,7 +90,7 @@ git commit -m "feat: bootstrap mcp-whatever"
 Every deploy — first-time or repeat, one host or many:
 
 ```fish
-cd ~/repo/hermes-deploy/terraform
+cd <homelab-repo>/terraform
 terraform apply
 ```
 
@@ -101,14 +103,14 @@ resource.
 ### Re-deploy a single host
 
 ```fish
-cd ~/repo/hermes-deploy/terraform
+cd <homelab-repo>/terraform
 terraform apply -replace='null_resource.nixos_deploy["mcp-audit"]'
 ```
 
 ### Skip the NixOS deploy (bare provisioning only)
 
 ```fish
-cd ~/repo/hermes-deploy/terraform
+cd <homelab-repo>/terraform
 terraform apply -var='nixos_deploy_enabled=false'
 ```
 
@@ -118,7 +120,7 @@ If you're iterating on the flake and don't want to touch Terraform at
 all, the bootstrap script works standalone:
 
 ```fish
-cd ~/repo/hermes-deploy
+cd <homelab-repo>
 ./scripts/bootstrap-host.sh mcp-audit
 ```
 
@@ -134,13 +136,12 @@ cd ~/repo/hermes-deploy
 
 ## Ownership boundary note
 
-`docs/ownership-boundary.md` originally stated that
-Terraform does NOT push guest state. This pipeline relaxes that line
-by calling `bootstrap-host.sh` from a `local-exec` provisioner. The
-boundary is still respected in spirit — Terraform doesn't ship any
-guest config itself, it just invokes a NixOS-repo script that does.
-The alternative (two separate commands every deploy) produced enough
-operator friction to justify the crossover.
+[`../../../docs/ownership-boundary.md`](../../../docs/ownership-boundary.md)
+states that Terraform does not own guest state. The
+`null_resource.nixos_deploy` `local-exec` bridge is the accepted crossover: it
+invokes the NixOS-owned `scripts/bootstrap-host.sh` workflow after Terraform has
+created or updated the Proxmox envelope. Terraform still does not ship guest
+configuration itself; NixOS owns the rebuild and activation.
 
 ## Key security posture
 

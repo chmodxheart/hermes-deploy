@@ -20,8 +20,9 @@ hostname="${1:?Usage: $0 <hostname> [flake-target]}"
 # NATS creds are available, then mcp-audit (full) once they are.
 flake_target="${2:-$hostname}"
 domain="${MCP_DOMAIN:-samesies.gay}"
-deploy_user="${DEPLOY_USER:-root}"
-target="${deploy_user}@${hostname}.${domain}"
+deploy_user="${DEPLOY_USER:-eve}"
+deploy_host="${DEPLOY_HOST:-${hostname}.${domain}}"
+target="${deploy_user}@${deploy_host}"
 
 # --- sanity -----------------------------------------------------------
 

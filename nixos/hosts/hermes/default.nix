@@ -29,14 +29,7 @@
 
   users.users.root.shell = pkgs.fish;
 
-  # Provision the hermes-agent container's writable layer on first boot:
-  # - Node 22 LTS from NodeSource (ubuntu:24.04's 18.19.1 is too old for MCP
-  #   servers and mcporter — they require 20.11+)
-  # - libopus0: Discord voice playback (without it the bot logs "Opus codec not found")
-  # - docker.io and git: optional CLIs that `hermes doctor` probes for locally
-  # - npm CLIs: OpenAI Codex and agent-browser for Hermes tool integrations
-  # - supermemory: memory provider plugin, not bundled in hermes-agent's Nix
-  #   Python env (declared as a pip dependency in plugins/memory/supermemory/plugin.yaml).
+  # Provision the hermes-agent container's writable layer on first boot
   systemd.services.hermes-agent-container-extras = {
     description = "Install apt + pip packages into the hermes-agent container";
     wants = [ "hermes-agent.service" ];
@@ -152,10 +145,10 @@
       _config_version = 18;
 
       model = {
-        default = "claude-sonnet-4-6";
-        provider = "custom";
-        base_url = "\${CUSTOM_API_URL}";
-        api_key = "\${CUSTOM_API_KEY}";
+        default = "frogbot/kimi-k2-6";
+        provider = "llm-proxy";
+        base_url = "\${PROXY_API_URL}";
+        api_key = "\${PROXY_API_KEY}";
       };
 
       providers = { };
@@ -164,10 +157,9 @@
 
       custom_providers = [
         {
-          name = "firmware";
-          base_url = "\${CUSTOM_API_URL}";
-          api_key = "\${CUSTOM_API_KEY}";
-          model = "claude-sonnet-4-6";
+          name = "llm-proxy";
+          base_url = "\${PROXY_API_URL}";
+          api_key = "\${PROXY_API_KEY}";
         }
       ];
 
@@ -394,8 +386,10 @@
       memory = {
         memory_enabled = true;
         user_profile_enabled = true;
-        memory_char_limit = 2200;
-        user_char_limit = 1375;
+        skill_generation = true;
+        episodic_archive  = true;
+        memory_char_limit = 3000;
+        user_char_limit = 2000;
         provider = "supermemory";
         nudge_interval = 10;
         flush_min_turns = 6;
@@ -407,6 +401,9 @@
         base_url = "";
         api_key = "";
         max_iterations = 50;
+        max_concurrent_children = 5;
+        max_spawn_depth = 2;
+        orchestrator_enabled = true;
         reasoning_effort = "";
         default_toolsets = [
           "terminal"

@@ -412,11 +412,18 @@ in
     services.vector.settings.sources.nats_journal_consumer = {
       type = "nats";
       url = "tls://mcp-nats01.samesies.gay:4222,tls://mcp-nats02.samesies.gay:4222,tls://mcp-nats03.samesies.gay:4222";
+      connection_name = "vector-audit-consumer";
       subject = "audit.journal.>";
-      queue = "audit-journal-consumer";
       jetstream.enabled = true;
       jetstream.stream = "AUDIT_JOURNAL";
-      acknowledgements.enabled = true;
+      # Durable pull consumer must pre-exist on the stream. Create it via
+      # NATS CLI on one of the nats hosts:
+      #   nats consumer add AUDIT_JOURNAL audit-journal-consumer \
+      #     --pull --filter audit.journal.> --ack explicit --deliver all
+      # End-to-end acknowledgement is driven by the downstream sink
+      # (acknowledgements.enabled = true on journal_remote_files); the NATS
+      # source itself does not expose an `acknowledgements` setting.
+      jetstream.consumer = "audit-journal-consumer";
       auth.strategy = "credentials_file";
       auth.credentials_file.path = "/run/secrets/nats-client.creds";
       tls.enabled = true;
@@ -425,10 +432,20 @@ in
       tls.key_file = "/run/vector-certs/client.key";
       decoding.codec = "json";
     };
+    # Normalize service_name so sink templating never sees a missing field.
+    # Vector template syntax ({{ }}) does not support Liquid-style pipes or
+    # default filters; fallbacks must be computed upstream in a transform.
+    services.vector.settings.transforms.journal_normalize = {
+      type = "remap";
+      inputs = [ "nats_journal_consumer" ];
+      source = ''
+        .host_fields.service_name = to_string(.host_fields.service_name) ?? "unknown"
+      '';
+    };
     services.vector.settings.sinks.journal_remote_files = {
       type = "file";
-      inputs = [ "nats_journal_consumer" ];
-      path = "/var/log/journal/remote/{{ .host_fields.service_name | default: 'unknown' }}/messages.%Y-%m-%d.log";
+      inputs = [ "journal_normalize" ];
+      path = "/var/log/journal/remote/{{ .host_fields.service_name }}/messages.%Y-%m-%d.log";
       encoding.codec = "json";
       acknowledgements.enabled = true;
     };

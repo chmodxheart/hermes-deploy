@@ -1,6 +1,6 @@
 # Ops Docs
 
-Runbooks for the `nixos/` subtree live here.
+Runbooks for the `nixos/` subtree live here as part of the whole-homelab repo.
 
 Use this directory for guest-side operator procedures. For Proxmox container
 provisioning and the Terraform-to-NixOS contract, start from the shared docs in
@@ -9,6 +9,7 @@ provisioning and the Terraform-to-NixOS contract, start from the shared docs in
 ## Monorepo Map
 
 - Shared contract and ownership docs: [`../../../docs/README.md`](../../../docs/README.md)
+- Whole-homelab ownership boundary: [`../../../docs/ownership-boundary.md`](../../../docs/ownership-boundary.md)
 - Shared runtime architecture diagram: [`../../../docs/end-state-data-flow.md`](../../../docs/end-state-data-flow.md)
 - Terraform infrastructure entrypoint: [`../../../terraform/README.md`](../../../terraform/README.md)
 - NixOS subtree entrypoint: [`../../README.md`](../../README.md)

@@ -4,7 +4,7 @@
 **Terraform Proxmox NixOS LXC Lab**
 
 This project uses Terraform and the Proxmox provider to provision the LXC containers that will run
-NixOS systems. It is the infrastructure subtree inside the hermes-deploy monorepo and stands up the
+NixOS systems. It is the infrastructure subtree inside the homelab monorepo and stands up the
 Proxmox-side container resources consumed by the sibling `nixos/` tree.
 
 **Core Value:** Provision repeatable Proxmox LXC infrastructure that gives the `nixos/` tree stable, predictable
