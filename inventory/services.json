@@ -27,6 +27,20 @@
       "terraform": "pre-existing outside terraform/locals.tf inventory"
     },
     {
+      "id": "uptime-kuma",
+      "platform": "proxmox-lxc+nixos",
+      "source_path": "terraform/locals.tf#uptime-kuma; nixos/flake.nix#nixosConfigurations.uptime-kuma",
+      "owner": "homelab:terraform+nixos",
+      "role": "Uptime Kuma migration target",
+      "vmid": 2130,
+      "ipv4": "10.2.100.30/24",
+      "resources": {
+        "cpu_cores": 1,
+        "memory_mib": 1024,
+        "rootfs_size_gib": 20
+      }
+    },
+    {
       "id": "mcp-audit",
       "platform": "proxmox-lxc+nixos",
       "source_path": "terraform/locals.tf#mcp-audit; nixos/flake.nix#mcp-audit",
@@ -111,21 +125,26 @@
         "actual.${DOMAIN_0}"
       ],
       "storage": [
-        "VolSync/restic-backed persistence"
+        "VolSync/restic-backed Kubernetes persistence",
+        "target LXC local data path /var/lib/uptime-kuma after restore evidence"
       ],
       "secrets": [
         "encrypted clusterenv reference ${VOLSYNC_WASABI_NAME}"
       ],
       "backups": [
-        "VolSync/restic"
+        "VolSync/restic source remains recoverable",
+        "target LXC host backup remains gated until restore evidence and rollback readiness"
       ],
       "monitoring": [
         "Flux HelmRelease status",
-        "cluster Prometheus if scraped"
+        "cluster Prometheus if scraped",
+        "target journald status and http://10.2.100.30:3001/ health after deployment"
       ],
       "dependencies": [
         "Flux",
-        "Talos Kubernetes"
+        "Talos Kubernetes",
+        "proxmox-lxc+nixos target uptime-kuma at 10.2.100.30",
+        "docs/uptime-kuma-cutover.md restore, DNS/ingress, rollback, and cleanup gates"
       ],
       "ports": [],
       "criticality": "service",
@@ -2810,12 +2829,15 @@
       },
       "migration": {
         "triage": "candidate",
-        "rationale": "Phase 4 first migration candidate: low-duty-cycle monitoring UI with internal ingress uptime.${DOMAIN_0}, VolSync/restic-backed config, simple rollback by repointing traffic to Kubernetes, and lower data-risk than CNPG, NFS media, object storage, or backup-owner services. Observed usage remains unknown; do not infer utilization from requests alone.",
+        "rationale": "Phase 4 first migration candidate: low-duty-cycle monitoring UI with internal ingress uptime.${DOMAIN_0}, VolSync/restic-backed config, simple rollback by repointing traffic to Kubernetes, and lower data-risk than CNPG, NFS media, object storage, or backup-owner services. Phase 8 migration target is buildable on proxmox-lxc+nixos at 10.2.100.30; restore, UI login, monitor list, DNS/ingress cutover, rollback window, and clustertool/Flux cleanup remain gated by docs/uptime-kuma-cutover.md until live evidence is recorded.",
         "evidence": [
-          "external/clustertool/clusters/main/kubernetes/apps/uptime-kuma/app/helm-release.yaml"
+          "external/clustertool/clusters/main/kubernetes/apps/uptime-kuma/app/helm-release.yaml",
+          "terraform/locals.tf#uptime-kuma",
+          "nixos/flake.nix#nixosConfigurations.uptime-kuma",
+          "docs/uptime-kuma-cutover.md"
         ]
       },
-      "notes": "Phase 3 inventory evidence only; durable Kubernetes changes remain in clustertool."
+      "notes": "Keep owner as clustertool:flux and source path as Kubernetes until live cutover is proven. Durable Kubernetes cleanup remains clustertool/Flux-owned until rollback readiness is satisfied."
     },
     {
       "id": "vaultwarden",
