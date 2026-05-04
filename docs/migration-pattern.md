@@ -233,6 +233,11 @@ below are proposed operator-confirmation values because free VMID, IP, and MAC
 inventory is not encoded in repo docs. Confirm those values before implementation
 or Terraform apply.
 
+The reusable checklist in this document remains generic. The authoritative
+Phase 8 service-specific cutover runbook for Uptime Kuma is
+`docs/uptime-kuma-cutover.md`; use it for restore evidence, target verification,
+the DNS/ingress request, rollback window, and clustertool/Flux cleanup handoff.
+
 The older VLAN 1200 proposal was superseded by Phase 5; existing audit-plane
 VLAN 1200 allocations remain grandfathered.
 
